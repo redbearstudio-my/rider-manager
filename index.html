@@ -7,6 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rider Manager v1.2</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -201,6 +202,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .exp-clear-btn{background:none;border:1.5px solid var(--border);border-radius:8px;width:34px;height:34px;cursor:pointer;color:var(--muted);font-size:.85rem;flex-shrink:0;transition:all .15s}
 .exp-clear-btn:hover{border-color:var(--danger);color:var(--danger)}
 .exp-cat-chips{display:flex;flex-wrap:wrap;gap:.375rem}
+.exp-export-btn{display:flex;align-items:center;justify-content:center;gap:.375rem;width:100%;padding:.55rem;border-radius:8px;border:1.5px solid #86efac;background:#f0fdf4;color:#166534;font-family:inherit;font-size:.8rem;font-weight:600;cursor:pointer;transition:background .15s}
+.exp-export-btn:hover{background:#dcfce7}
 .exp-chip{padding:.35rem .75rem;border-radius:20px;border:1.5px solid var(--border);background:#fff;font-size:.8rem;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap}
 .exp-chip.active{background:var(--teal);border-color:var(--teal);color:#fff}
 .export-mode-tabs{display:flex;gap:.5rem;background:var(--surface);border-radius:10px;padding:4px}
@@ -486,6 +489,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
           <button class="exp-clear-btn" onclick="clearExpFilters()" title="Clear filters">✕</button>
         </div>
         <div id="exp-cat-chips" class="exp-cat-chips"></div>
+        <button class="exp-export-btn" onclick="openExportModal('expenses')">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export Expenses
+        </button>
       </div>
 
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
@@ -785,7 +792,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal('export-expense-modal')">Cancel</button>
-      <button class="btn-save" onclick="doExportExpenses()">Export CSV</button>
+      <button class="btn-save" onclick="doExportExpenses()">Export Excel</button>
     </div>
   </div>
 </div>
@@ -817,7 +824,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal('export-trips-modal')">Cancel</button>
-      <button class="btn-save" onclick="doExportTrips()">Export CSV</button>
+      <button class="btn-save" onclick="doExportTrips()">Export Excel</button>
     </div>
   </div>
 </div>
@@ -1563,17 +1570,24 @@ function doExportExpenses() {
     return d >= range.from && d <= range.to;
   });
   if (!filtered.length) { toast('No expenses in selected period','error'); return; }
-  const headers = ['Date','Type','Amount (RM)','Location','Notes'];
-  const rows = filtered.map(e => [
-    e.date, e.type, parseFloat(e.amount||0).toFixed(2), e.location||'', e.notes||''
-  ].map(v => `"${v.toString().replace(/"/g,'""')}"`));
-  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = `expenses_${range.label}.csv`;
-  a.click();
+
+  const rows = filtered.map(e => ({
+    'Date': e.date,
+    'Type': e.type,
+    'Amount (RM)': parseFloat(e.amount||0),
+    'Location': e.location||'',
+    'Notes': e.notes||''
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  // Auto column widths
+  ws['!cols'] = [12,15,14,25,30].map(w => ({ wch: w }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Expenses');
+  XLSX.writeFile(wb, `expenses_${range.label}.xlsx`);
+
   closeModal('export-expense-modal');
-  toast(`Exported ${filtered.length} expenses`, 'success');
+  toast(`Exported ${filtered.length} expenses to Excel`, 'success');
 }
 
 function doExportTrips() {
@@ -1584,21 +1598,38 @@ function doExportTrips() {
     return d >= range.from && d <= range.to;
   });
   if (!filtered.length) { toast('No trips in selected period','error'); return; }
-  const headers = ['Trip ID','Date','Time','Guest Name','Guest Contact','Pickup Locations','Dropoff Locations','Adults','Kids','Small Luggage','Medium Luggage','Big Luggage','Charge (RM)','Status','Completed','Cancelled','Cancellation Reason','Paid','Notes','Created At'];
-  const rows = filtered.map(t => [
-    t.trip_id||t.id, t.date, t.time, t.guest_name, t.guest_contact,
-    t.pickup_locations, t.dropoff_locations, t.adults, t.kids,
-    t.small_luggage, t.medium_luggage, t.big_luggage, t.charge,
-    t.status, t.completed?'Yes':'No', t.cancelled?'Yes':'No',
-    t.cancellation_reason, t.paid?'Yes':'No', t.notes, t.created_at
-  ].map(v => `"${(v||'').toString().replace(/"/g,'""')}"`));
-  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = `trips_${range.label}.csv`;
-  a.click();
+
+  const rows = filtered.map(t => ({
+    'Trip ID': t.trip_id||t.id,
+    'Date': t.date,
+    'Time': t.time,
+    'Guest Name': t.guest_name||'',
+    'Guest Contact': t.guest_contact||'',
+    'Pickup Locations': t.pickup_locations||'',
+    'Dropoff Locations': t.dropoff_locations||'',
+    'Adults': t.adults||0,
+    'Kids': t.kids||0,
+    'Small Luggage': t.small_luggage||0,
+    'Medium Luggage': t.medium_luggage||0,
+    'Big Luggage': t.big_luggage||0,
+    'Charge (RM)': parseFloat(t.charge||0),
+    'Status': t.status||'',
+    'Completed': t.completed?'Yes':'No',
+    'Cancelled': t.cancelled?'Yes':'No',
+    'Cancellation Reason': t.cancellation_reason||'',
+    'Paid': t.paid?'Yes':'No',
+    'Notes': t.notes||'',
+    'Created At': t.created_at||''
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [15,12,8,20,16,25,25,7,6,8,10,8,12,12,10,10,20,6,25,20].map(w => ({ wch: w }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Trips');
+  XLSX.writeFile(wb, `trips_${range.label}.xlsx`);
+
   closeModal('export-trips-modal');
-  toast(`Exported ${filtered.length} trips`, 'success');
+  toast(`Exported ${filtered.length} trips to Excel`, 'success');
 }
 
 function exportCSV() {
