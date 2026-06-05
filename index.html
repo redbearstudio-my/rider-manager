@@ -778,22 +778,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <button class="modal-close" onclick="closeModal('export-expense-modal')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="export-mode-tabs">
-        <button class="export-tab active" id="exp-tab-month" onclick="setExportTab('expense','month')">By Month</button>
-        <button class="export-tab" id="exp-tab-range" onclick="setExportTab('expense','range')">Date Range</button>
+      <div style="background:var(--surface);border-radius:var(--radius-sm);padding:1rem;border:1.5px solid var(--border)">
+        <div style="font-size:.8rem;color:var(--muted);margin-bottom:.25rem">Exporting range</div>
+        <div id="exp-export-range-label" style="font-weight:600;font-size:.95rem"></div>
       </div>
-      <div id="exp-export-month" class="export-panel">
-        <div class="form-group" style="margin-top:1rem">
-          <label>Select Month</label>
-          <input type="month" id="exp-export-month-val">
-        </div>
-      </div>
-      <div id="exp-export-range" class="export-panel" style="display:none">
-        <div class="form-row" style="margin-top:1rem">
-          <div class="form-group"><label>From</label><input type="date" id="exp-export-from"></div>
-          <div class="form-group"><label>To</label><input type="date" id="exp-export-to"></div>
-        </div>
-      </div>
+      <div style="font-size:.8rem;color:var(--muted);margin-top:.75rem">To change the date range, update the filters on the Expenses page.</div>
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal('export-expense-modal')">Cancel</button>
@@ -1544,10 +1533,16 @@ function openExportModal(type) {
   const now = new Date();
   const monthVal = now.toISOString().slice(0,7);
   if (type === 'expenses') {
-    document.getElementById('exp-export-month-val').value = monthVal;
-    document.getElementById('exp-export-from').value = '';
-    document.getElementById('exp-export-to').value = '';
-    setExportTab('expense','month');
+    // Read current filter values from expense page
+    const fromVal = document.getElementById('exp-from').value;
+    const toVal = document.getElementById('exp-to').value;
+    const fmt = d => new Date(d).toLocaleDateString('en-MY', {day:'numeric', month:'short', year:'numeric'});
+    const label = fromVal && toVal
+      ? `${fmt(fromVal)} → ${fmt(toVal)}`
+      : fromVal ? `From ${fmt(fromVal)}`
+      : toVal ? `Until ${fmt(toVal)}`
+      : 'All expenses (no date filter)';
+    document.getElementById('exp-export-range-label').textContent = label;
     openModal('export-expense-modal');
   } else {
     document.getElementById('trip-export-month-val').value = monthVal;
@@ -1562,23 +1557,23 @@ function setExportTab(prefix, mode) {
   const p = prefix === 'expense' ? 'exp' : 'trip';
   document.getElementById(`${p}-tab-month`).classList.toggle('active', mode==='month');
   document.getElementById(`${p}-tab-range`).classList.toggle('active', mode==='range');
-  document.getElementById(`${prefix}-export-month`).style.display = mode==='month' ? '' : 'none';
-  document.getElementById(`${prefix}-export-range`).style.display = mode==='range' ? '' : 'none';
+  document.getElementById(`${p}-export-month`).style.display = mode==='month' ? '' : 'none';
+  document.getElementById(`${p}-export-range`).style.display = mode==='range' ? '' : 'none';
 }
 
 function getExportDateRange(prefix) {
   const p = prefix === 'expense' ? 'exp' : 'trip';
   const isMonth = document.getElementById(`${p}-tab-month`).classList.contains('active');
   if (isMonth) {
-    const m = document.getElementById(`${prefix}-export-month-val`).value;
+    const m = document.getElementById(`${p}-export-month-val`).value;
     if (!m) { toast('Please select a month','error'); return null; }
     const [y, mo] = m.split('-').map(Number);
     const from = new Date(y, mo-1, 1);
     const to = new Date(y, mo, 0, 23, 59, 59, 999);
     return { from, to, label: m };
   } else {
-    const fv = document.getElementById(`${prefix}-export-from`).value;
-    const tv = document.getElementById(`${prefix}-export-to`).value;
+    const fv = document.getElementById(`${p}-export-from`).value;
+    const tv = document.getElementById(`${p}-export-to`).value;
     if (!fv || !tv) { toast('Please select both dates','error'); return null; }
     const from = new Date(fv);
     const to = new Date(tv); to.setHours(23,59,59,999);
@@ -1587,28 +1582,62 @@ function getExportDateRange(prefix) {
 }
 
 function doExportExpenses() {
-  const range = getExportDateRange('expense');
-  if (!range) return;
+  // Use date filters from the expense page directly
+  const fromVal = document.getElementById('exp-from').value;
+  const toVal = document.getElementById('exp-to').value;
+  const fromDate = fromVal ? new Date(fromVal) : null;
+  const toDate = toVal ? new Date(toVal) : null;
+  if (toDate) toDate.setHours(23,59,59,999);
+
   const filtered = expenses.filter(e => {
     const d = new Date(e.date);
-    return d >= range.from && d <= range.to;
+    if (fromDate && d < fromDate) return false;
+    if (toDate && d > toDate) return false;
+    return true;
   });
   if (!filtered.length) { toast('No expenses in selected period','error'); return; }
 
-  const rows = filtered.map(e => ({
-    'Date': e.date,
-    'Type': e.type,
-    'Amount (RM)': parseFloat(e.amount||0),
-    'Location': e.location||'',
-    'Notes': e.notes||''
-  }));
+  // Get username from settings
+  const userName = document.getElementById('settings-name').value.trim() || 'Unknown';
 
-  const ws = XLSX.utils.json_to_sheet(rows);
-  // Auto column widths
+  // Build date range label
+  const fmt = d => new Date(d).toLocaleDateString('en-MY', {day:'numeric', month:'short', year:'numeric'});
+  const rangeLabel = fromVal && toVal ? `${fmt(fromVal)} - ${fmt(toVal)}`
+    : fromVal ? `From ${fmt(fromVal)}`
+    : toVal ? `Until ${fmt(toVal)}`
+    : 'All Expenses';
+  const fileLabel = (fromVal && toVal) ? `${fromVal}_to_${toVal}` : new Date().toISOString().split('T')[0];
+
+  // Build worksheet with header rows first
+  const ws = XLSX.utils.aoa_to_sheet([
+    [userName],
+    ['Expenses Report'],
+    [rangeLabel],
+    [],  // blank row
+    ['Date', 'Type', 'Amount (RM)', 'Location', 'Notes']
+  ]);
+
+  // Append data rows
+  const dataRows = filtered.map(e => [
+    e.date,
+    e.type,
+    parseFloat(e.amount||0),
+    e.location||'',
+    e.notes||''
+  ]);
+  XLSX.utils.sheet_add_aoa(ws, dataRows, { origin: 'A6' });
+
+  // Style: merge header cells across 5 columns
+  ws['!merges'] = [
+    { s:{r:0,c:0}, e:{r:0,c:4} },
+    { s:{r:1,c:0}, e:{r:1,c:4} },
+    { s:{r:2,c:0}, e:{r:2,c:4} },
+  ];
   ws['!cols'] = [12,15,14,25,30].map(w => ({ wch: w }));
+
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Expenses');
-  XLSX.writeFile(wb, `expenses_${range.label}.xlsx`);
+  XLSX.writeFile(wb, `${userName}_expenses_${fileLabel}.xlsx`);
 
   closeModal('export-expense-modal');
   toast(`Exported ${filtered.length} expenses to Excel`, 'success');
