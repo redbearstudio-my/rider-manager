@@ -1562,23 +1562,23 @@ function setExportTab(prefix, mode) {
   const p = prefix === 'expense' ? 'exp' : 'trip';
   document.getElementById(`${p}-tab-month`).classList.toggle('active', mode==='month');
   document.getElementById(`${p}-tab-range`).classList.toggle('active', mode==='range');
-  document.getElementById(`${prefix}-export-month`).style.display = mode==='month' ? '' : 'none';
-  document.getElementById(`${prefix}-export-range`).style.display = mode==='range' ? '' : 'none';
+  document.getElementById(`${p}-export-month`).style.display = mode==='month' ? '' : 'none';
+  document.getElementById(`${p}-export-range`).style.display = mode==='range' ? '' : 'none';
 }
 
 function getExportDateRange(prefix) {
   const p = prefix === 'expense' ? 'exp' : 'trip';
   const isMonth = document.getElementById(`${p}-tab-month`).classList.contains('active');
   if (isMonth) {
-    const m = document.getElementById(`${prefix}-export-month-val`).value;
+    const m = document.getElementById(`${p}-export-month-val`).value;
     if (!m) { toast('Please select a month','error'); return null; }
     const [y, mo] = m.split('-').map(Number);
     const from = new Date(y, mo-1, 1);
     const to = new Date(y, mo, 0, 23, 59, 59, 999);
     return { from, to, label: m };
   } else {
-    const fv = document.getElementById(`${prefix}-export-from`).value;
-    const tv = document.getElementById(`${prefix}-export-to`).value;
+    const fv = document.getElementById(`${p}-export-from`).value;
+    const tv = document.getElementById(`${p}-export-to`).value;
     if (!fv || !tv) { toast('Please select both dates','error'); return null; }
     const from = new Date(fv);
     const to = new Date(tv); to.setHours(23,59,59,999);
