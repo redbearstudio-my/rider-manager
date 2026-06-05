@@ -201,6 +201,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .exp-clear-btn{background:none;border:1.5px solid var(--border);border-radius:8px;width:34px;height:34px;cursor:pointer;color:var(--muted);font-size:.85rem;flex-shrink:0;transition:all .15s}
 .exp-clear-btn:hover{border-color:var(--danger);color:var(--danger)}
 .exp-cat-chips{display:flex;flex-wrap:wrap;gap:.375rem}
+.exp-export-btn{display:flex;align-items:center;justify-content:center;gap:.375rem;width:100%;padding:.55rem;border-radius:8px;border:1.5px solid #86efac;background:#f0fdf4;color:#166534;font-family:inherit;font-size:.8rem;font-weight:600;cursor:pointer;transition:background .15s}
+.exp-export-btn:hover{background:#dcfce7}
 .exp-chip{padding:.35rem .75rem;border-radius:20px;border:1.5px solid var(--border);background:#fff;font-size:.8rem;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap}
 .exp-chip.active{background:var(--teal);border-color:var(--teal);color:#fff}
 .export-mode-tabs{display:flex;gap:.5rem;background:var(--surface);border-radius:10px;padding:4px}
@@ -486,6 +488,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
           <button class="exp-clear-btn" onclick="clearExpFilters()" title="Clear filters">✕</button>
         </div>
         <div id="exp-cat-chips" class="exp-cat-chips"></div>
+        <button class="exp-export-btn" onclick="openExportModal('expenses')">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export Expenses
+        </button>
       </div>
 
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
