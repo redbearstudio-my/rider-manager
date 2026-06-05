@@ -2,6 +2,35 @@
 
 ---
 
+## v1.5 — 6 June 2026
+
+### 📅 Expense Filter — Month Picker
+- Added a **Month** input to the expense filter bar, to the left of the From/To date fields
+- Selecting a month auto-fills From and To to the first and last day of that month
+- Manually changing From/To clears the month picker
+- Clear ✕ button resets all three fields at once
+
+---
+
+## v1.4 — 6 June 2026
+
+### 📊 Excel Export for Expenses & Trips
+- Export Expenses now generates `.xlsx` instead of CSV
+- Export Trips now generates `.xlsx` instead of CSV
+- Uses SheetJS for proper Excel formatting with auto column widths
+- Amount/Charge columns stored as numbers for Excel SUM formula support
+
+---
+
+## v1.3 — 6 June 2026
+
+### 💸 Expense Page — Export Button in Filter Section
+- Added a green **Export Expenses** button at the bottom of the filter bar
+- Tapping it opens the Export modal (select month or date range)
+- More accessible than going to Settings to export
+
+---
+
 ## v1.2 — 5 June 2026
 
 ### 📤 Export Expenses — Month or Date Range
