@@ -1819,24 +1819,36 @@ function importExcel(event) {
       }
       if (!rows.length) return toast('No valid rows found — check your Excel format', 'error');
       let imported = 0;
+      let skippedDup = 0;
       const withId = rows.filter(r => r.trip_id);
       const withoutId = rows.filter(r => !r.trip_id);
-      // Upsert rows that have a trip_id (dedup by trip_id)
-      for (let i = 0; i < withId.length; i += 50) {
-        const batch = withId.slice(i, i + 50);
-        const { error } = await sb.from('trips').upsert(batch, { onConflict: 'trip_id', ignoreDuplicates: false });
-        if (error) return toast('Import error: ' + error.message, 'error');
-        imported += batch.length;
+
+      // For rows with trip_id: fetch existing ones, skip duplicates
+      if (withId.length) {
+        const tripIds = withId.map(r => r.trip_id);
+        const { data: existing } = await sb.from('trips').select('trip_id').in('trip_id', tripIds);
+        const existingIds = new Set((existing || []).map(r => r.trip_id));
+        const toInsert = withId.filter(r => !existingIds.has(r.trip_id));
+        skippedDup = withId.length - toInsert.length;
+        for (let i = 0; i < toInsert.length; i += 50) {
+          const batch = toInsert.slice(i, i + 50);
+          const { error } = await sb.from('trips').insert(batch);
+          if (error) return toast('Import error: ' + error.message, 'error');
+          imported += batch.length;
+        }
       }
-      // Insert rows without trip_id as new records
+
+      // For rows without trip_id: always insert as new
       for (let i = 0; i < withoutId.length; i += 50) {
         const batch = withoutId.slice(i, i + 50);
         const { error } = await sb.from('trips').insert(batch);
         if (error) return toast('Import error: ' + error.message, 'error');
         imported += batch.length;
       }
-      const msg = skipped > 0 ? `Imported ${imported} trips (${skipped} skipped)` : `Imported ${imported} trips`;
-      toast(msg, 'success');
+      const parts = [`Imported ${imported} trips`];
+      if (skippedDup > 0) parts.push(`${skippedDup} duplicates skipped`);
+      if (skipped > 0) parts.push(`${skipped} invalid rows skipped`);
+      toast(parts.join(' · '), 'success');
       await loadAll();
       event.target.value = '';
     } catch (err) {
