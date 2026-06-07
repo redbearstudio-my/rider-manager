@@ -570,7 +570,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Import trip from Excel
         </button>
-        <input type="file" id="import-file" accept=".csv" style="display:none" onchange="importCSV(event)">
+        <input type="file" id="import-file" accept=".xlsx" style="display:none" onchange="importExcel(event)">
         <p style="font-size:.8rem;color:var(--muted);margin-top:.5rem">CSV columns: Trip ID, Date (YYYY-MM-DD), Time (HH:MM), Guest Name, Guest Contact, Pickup Locations, Dropoff Locations, Adults, Kids, Small Luggage, Medium Luggage, Big Luggage, Charge (RM), Status, Completed, Cancelled, Cancellation Reason, Paid, Notes</p>
       </div>
       <div class="settings-section">
@@ -1772,69 +1772,68 @@ function normaliseDate(s) {
   return null;
 }
 
-function importCSV(event) {
+function importExcel(event) {
   const file = event.target.files[0]; if (!file) return;
   const reader = new FileReader();
   reader.onload = async (e) => {
-    const lines = e.target.result.split('\n').filter(l => l.trim());
-    const header = parseCSVLine(lines[0]).map(h => h.toLowerCase().trim());
-    const idx = (name) => header.findIndex(h => h.includes(name));
-    const iDate=idx('date'), iTime=idx('time'), iName=idx('guest name'), iContact=idx('contact');
-    const iPickup=idx('pickup'), iDropoff=idx('dropoff'), iAdults=idx('adults'), iKids=idx('kids');
-    const iSmall=idx('small'), iMedium=idx('medium'), iBig=idx('big'), iCharge=idx('charge');
-    const iStatus=idx('status'), iCompleted=idx('completed'), iCancelled=idx('cancelled');
-    const iCancelReason=idx('cancellation'), iPaid=idx('paid'), iNotes=idx('notes'), iTripId=idx('trip id');
-    const pv = (row, i) => i >= 0 ? (row[i] || '').replace(/^"|"$/g,'').trim() : '';
-    const isBool = v => ['yes','true','1'].includes((v||'').toLowerCase().trim());
-    const rows = [];
-    let skipped = 0;
-    for (let i = 1; i < lines.length; i++) {
-      const row = parseCSVLine(lines[i]);
-      const rawDate = pv(row, iDate);
-      const date = normaliseDate(rawDate);
-      if (!date || date === 'NaN-NaN-NaN') { skipped++; continue; }
-      const rawStatus = pv(row, iStatus);
-      const cancelled = isBool(pv(row, iCancelled)) || normaliseStatus(rawStatus) === 'cancelled';
-      const completed = isBool(pv(row, iCompleted)) || normaliseStatus(rawStatus) === 'completed';
-      const status = cancelled ? 'cancelled' : completed ? 'completed' : 'pending';
-      rows.push({
-        user_id: currentUser.id,
-        trip_id: pv(row, iTripId),
-        date,
-        time: pv(row, iTime).slice(0,5) || '00:00',
-        guest_name: pv(row, iName),
-        guest_contact: pv(row, iContact),
-        pickup_locations: pv(row, iPickup),
-        dropoff_locations: pv(row, iDropoff),
-        adults: parseInt(pv(row, iAdults)) || 1,
-        kids: parseInt(pv(row, iKids)) || 0,
-        small_luggage: parseInt(pv(row, iSmall)) || 0,
-        medium_luggage: parseInt(pv(row, iMedium)) || 0,
-        big_luggage: parseInt(pv(row, iBig)) || 0,
-        charge: parseFloat(pv(row, iCharge)) || 0,
-        status,
-        completed,
-        cancelled,
-        cancellation_reason: pv(row, iCancelReason),
-        paid: isBool(pv(row, iPaid)),
-        notes: pv(row, iNotes),
-      });
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rawRows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      if (!rawRows.length) return toast('No data found in Excel file', 'error');
+      const isBool = v => ['yes','true','1'].includes((v||'').toString().toLowerCase().trim());
+      const pv = (row, key) => (row[key] || '').toString().trim();
+      const rows = [];
+      let skipped = 0;
+      for (const row of rawRows) {
+        const rawDate = pv(row, 'Date');
+        const date = normaliseDate(rawDate);
+        if (!date || date === 'NaN-NaN-NaN') { skipped++; continue; }
+        const rawStatus = pv(row, 'Status');
+        const cancelled = isBool(pv(row, 'Cancelled')) || normaliseStatus(rawStatus) === 'cancelled';
+        const completed = isBool(pv(row, 'Completed')) || normaliseStatus(rawStatus) === 'completed';
+        const status = cancelled ? 'cancelled' : completed ? 'completed' : 'pending';
+        const time = pv(row, 'Time').slice(0, 5) || '00:00';
+        rows.push({
+          user_id: currentUser.id,
+          trip_id: pv(row, 'Trip ID'),
+          date,
+          time,
+          guest_name: pv(row, 'Guest Name'),
+          guest_contact: pv(row, 'Guest Contact'),
+          pickup_locations: pv(row, 'Pickup Locations'),
+          dropoff_locations: pv(row, 'Dropoff Locations'),
+          adults: parseInt(pv(row, 'Adults')) || 1,
+          kids: parseInt(pv(row, 'Kids')) || 0,
+          small_luggage: parseInt(pv(row, 'Small Luggage')) || 0,
+          medium_luggage: parseInt(pv(row, 'Medium Luggage')) || 0,
+          big_luggage: parseInt(pv(row, 'Big Luggage')) || 0,
+          charge: parseFloat(pv(row, 'Charge (RM)')) || 0,
+          status,
+          completed,
+          cancelled,
+          cancellation_reason: pv(row, 'Cancellation Reason'),
+          paid: isBool(pv(row, 'Paid')),
+          notes: pv(row, 'Notes'),
+        });
+      }
+      if (!rows.length) return toast('No valid rows found — check your Excel format', 'error');
+      let imported = 0;
+      for (let i = 0; i < rows.length; i += 50) {
+        const batch = rows.slice(i, i + 50);
+        const { error } = await sb.from('trips').upsert(batch, { onConflict: 'trip_id', ignoreDuplicates: false });
+        if (error) return toast('Import error: ' + error.message, 'error');
+        imported += batch.length;
+      }
+      const msg = skipped > 0 ? `Imported ${imported} trips (${skipped} skipped)` : `Imported ${imported} trips`;
+      toast(msg, 'success');
+      await loadAll();
+      event.target.value = '';
+    } catch (err) {
+      toast('Failed to read Excel file: ' + err.message, 'error');
     }
-    if (!rows.length) return toast('No valid rows found — check your CSV format', 'error');
-    // Insert in batches of 50 to avoid payload limits
-    let imported = 0;
-    for (let i = 0; i < rows.length; i += 50) {
-      const batch = rows.slice(i, i + 50);
-      const { error } = await sb.from('trips').upsert(batch, { onConflict: 'trip_id', ignoreDuplicates: false });
-      if (error) return toast('Import error: ' + error.message, 'error');
-      imported += batch.length;
-    }
-    const msg = skipped > 0 ? `Imported ${imported} trips (${skipped} skipped)` : `Imported ${imported} trips`;
-    toast(msg, 'success');
-    await loadAll();
-    event.target.value = '';
   };
-  reader.readAsText(file);
+  reader.readAsArrayBuffer(file);
 }
 
 // ── MODAL HELPERS ──────────────────────────────────────────────────────────
