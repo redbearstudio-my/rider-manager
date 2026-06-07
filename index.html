@@ -1819,9 +1819,19 @@ function importExcel(event) {
       }
       if (!rows.length) return toast('No valid rows found — check your Excel format', 'error');
       let imported = 0;
-      for (let i = 0; i < rows.length; i += 50) {
-        const batch = rows.slice(i, i + 50);
+      const withId = rows.filter(r => r.trip_id);
+      const withoutId = rows.filter(r => !r.trip_id);
+      // Upsert rows that have a trip_id (dedup by trip_id)
+      for (let i = 0; i < withId.length; i += 50) {
+        const batch = withId.slice(i, i + 50);
         const { error } = await sb.from('trips').upsert(batch, { onConflict: 'trip_id', ignoreDuplicates: false });
+        if (error) return toast('Import error: ' + error.message, 'error');
+        imported += batch.length;
+      }
+      // Insert rows without trip_id as new records
+      for (let i = 0; i < withoutId.length; i += 50) {
+        const batch = withoutId.slice(i, i + 50);
+        const { error } = await sb.from('trips').insert(batch);
         if (error) return toast('Import error: ' + error.message, 'error');
         imported += batch.length;
       }
