@@ -1836,12 +1836,23 @@ function importExcel(event) {
           'adults','kids','small_luggage','medium_luggage','big_luggage','charge','status','completed',
           'cancelled','cancellation_reason','paid','notes'];
 
+        const norm = (v) => {
+          if (v === null || v === undefined) return '';
+          if (typeof v === 'boolean') return v ? 'true' : 'false';
+          const s = String(v).trim();
+          // Normalise numeric strings: "85.00" == "85"
+          if (!isNaN(s) && s !== '') return String(parseFloat(s));
+          // Normalise time: "06:00:00" == "06:00"
+          if (/^\d{2}:\d{2}:\d{2}$/.test(s)) return s.slice(0, 5);
+          return s;
+        };
+
         for (const row of withId) {
           const ex = existingMap[row.trip_id];
           if (!ex) {
             toInsert.push(row);
           } else {
-            const changed = compareFields.some(f => String(row[f] ?? '') !== String(ex[f] ?? ''));
+            const changed = compareFields.some(f => norm(row[f]) !== norm(ex[f]));
             if (changed) toUpdate.push(row);
             else unchanged++;
           }
