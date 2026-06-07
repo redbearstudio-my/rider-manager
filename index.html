@@ -1818,27 +1818,65 @@ function importExcel(event) {
         });
       }
       if (!rows.length) return toast('No valid rows found — check your Excel format', 'error');
-      let imported = 0;
+      let inserted = 0, updated = 0, unchanged = 0;
       const withId = rows.filter(r => r.trip_id);
       const withoutId = rows.filter(r => !r.trip_id);
 
-      // Upsert rows with trip_id — update if exists, insert if new
-      for (let i = 0; i < withId.length; i += 50) {
-        const batch = withId.slice(i, i + 50);
-        const { data, error } = await sb.from('trips').upsert(batch, { onConflict: 'trip_id', ignoreDuplicates: false }).select('id');
-        if (error) return toast('Import error: ' + error.message, 'error');
-        imported += (data || batch).length;
+      if (withId.length) {
+        // Fetch existing trips for these trip_ids to compare
+        const tripIds = withId.map(r => r.trip_id);
+        const { data: existing } = await sb.from('trips').select('*').in('trip_id', tripIds);
+        const existingMap = {};
+        (existing || []).forEach(t => { existingMap[t.trip_id] = t; });
+
+        const toInsert = [];
+        const toUpdate = [];
+
+        const compareFields = ['date','time','guest_name','guest_contact','pickup_locations','dropoff_locations',
+          'adults','kids','small_luggage','medium_luggage','big_luggage','charge','status','completed',
+          'cancelled','cancellation_reason','paid','notes'];
+
+        for (const row of withId) {
+          const ex = existingMap[row.trip_id];
+          if (!ex) {
+            toInsert.push(row);
+          } else {
+            const changed = compareFields.some(f => String(row[f] ?? '') !== String(ex[f] ?? ''));
+            if (changed) toUpdate.push(row);
+            else unchanged++;
+          }
+        }
+
+        // Insert new rows
+        for (let i = 0; i < toInsert.length; i += 50) {
+          const batch = toInsert.slice(i, i + 50);
+          const { error } = await sb.from('trips').insert(batch);
+          if (error) return toast('Import error: ' + error.message, 'error');
+          inserted += batch.length;
+        }
+
+        // Update changed rows
+        for (let i = 0; i < toUpdate.length; i += 50) {
+          const batch = toUpdate.slice(i, i + 50);
+          const { error } = await sb.from('trips').upsert(batch, { onConflict: 'trip_id', ignoreDuplicates: false });
+          if (error) return toast('Import error: ' + error.message, 'error');
+          updated += batch.length;
+        }
       }
 
-      // Insert rows without trip_id as new records (trip_id = null)
+      // Insert rows without trip_id as new records
       for (let i = 0; i < withoutId.length; i += 50) {
         const batch = withoutId.slice(i, i + 50).map(r => ({ ...r, trip_id: null }));
         const { error } = await sb.from('trips').insert(batch);
         if (error) return toast('Import error: ' + error.message, 'error');
-        imported += batch.length;
+        inserted += batch.length;
       }
-      const msg = skipped > 0 ? `Imported ${imported} trips (${skipped} invalid rows skipped)` : `Imported ${imported} trips`;
-      toast(msg, 'success');
+      const parts = [];
+      if (inserted > 0) parts.push(`${inserted} new`);
+      if (updated > 0) parts.push(`${updated} updated`);
+      if (unchanged > 0) parts.push(`${unchanged} unchanged`);
+      if (skipped > 0) parts.push(`${skipped} invalid`);
+      toast(`Import complete: ${parts.join(', ')}`, 'success');
       await loadAll();
       event.target.value = '';
     } catch (err) {
