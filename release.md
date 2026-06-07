@@ -2,6 +2,34 @@
 
 ---
 
+## v1.7 — 7 June 2026
+
+### 🔁 Import Trips — Duplicate Prevention
+- Import now uses **upsert** instead of plain insert
+- If a trip with the same `trip_id` already exists → record is **updated**
+- If `trip_id` is new → **inserted** as normal
+- Trips without a `trip_id` → always inserted fresh
+- Safe to re-import the same file multiple times without creating duplicates
+- **Pre-requisite:** unique index added on `trips(trip_id)` in Supabase; 87 pre-existing duplicate rows cleaned up
+
+---
+
+## v1.6 — 7 June 2026
+
+### 🐛 Fix: Expense Export Modal Not Opening
+- Root cause: `setExportTab()` and `getExportDateRange()` used wrong element ID prefix (`expense-` instead of `exp-`), causing silent crash before modal could open
+- Fixed both functions to consistently use short prefix `exp-` / `trip-`
+
+### 📊 Expense Export — Smarter UX
+- Export modal no longer asks you to reselect dates — reads From/To directly from the expense page filters and shows the range as a summary
+- Hint text guides user to update filters on the Expenses page if needed
+
+### 📝 Excel Export — Username & Report Headers
+- Filename now prefixed with username e.g. `Derred_expenses_2026-06-01_to_2026-06-30.xlsx`
+- Excel file starts with header rows: Name → "Expenses Report" → date range → blank row → column headers
+
+---
+
 ## v1.5 — 6 June 2026
 
 ### 📅 Expense Filter — Month Picker
