@@ -558,15 +558,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <h3>Data Backup &amp; Import</h3>
         <button class="btn-export green" onclick="openExportModal('trips')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export trips to CSV
+          Export trip data
         </button>
         <button class="btn-export green" onclick="openExportModal('expenses')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export expenses to CSV
+          Export expenses data
         </button>
         <button class="btn-export blue" onclick="document.getElementById('import-file').click()">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Import trips from CSV
+          Import trip from Excel
         </button>
         <input type="file" id="import-file" accept=".csv" style="display:none" onchange="importCSV(event)">
         <p style="font-size:.8rem;color:var(--muted);margin-top:.5rem">CSV columns: Trip ID, Date (YYYY-MM-DD), Time (HH:MM), Guest Name, Guest Contact, Pickup Locations, Dropoff Locations, Adults, Kids, Small Luggage, Medium Luggage, Big Luggage, Charge (RM), Status, Completed, Cancelled, Cancellation Reason, Paid, Notes</p>
