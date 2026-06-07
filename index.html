@@ -1796,7 +1796,7 @@ function importCSV(event) {
     let imported = 0;
     for (let i = 0; i < rows.length; i += 50) {
       const batch = rows.slice(i, i + 50);
-      const { error } = await sb.from('trips').insert(batch);
+      const { error } = await sb.from('trips').upsert(batch, { onConflict: 'trip_id', ignoreDuplicates: false });
       if (error) return toast('Import error: ' + error.message, 'error');
       imported += batch.length;
     }
