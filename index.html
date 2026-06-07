@@ -209,6 +209,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .export-mode-tabs{display:flex;gap:.5rem;background:var(--surface);border-radius:10px;padding:4px}
 .export-tab{flex:1;padding:.5rem;border:none;border-radius:8px;background:transparent;font-family:inherit;font-size:.875rem;font-weight:500;cursor:pointer;color:var(--muted);transition:all .15s}
 .export-tab.active{background:#fff;color:var(--teal);font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.export-all-row{display:flex;align-items:center;gap:.625rem;font-size:.9rem;font-weight:500;cursor:pointer;padding:.5rem 0}
+.export-all-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--teal);cursor:pointer;flex-shrink:0}
 .exp-left .exp-type{font-weight:600;font-size:.9rem}
 .exp-left .exp-date{font-size:.8rem;color:var(--muted);margin-top:.125rem}
 .exp-amt{font-weight:700;font-size:1rem}
@@ -558,7 +560,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <h3>Data Backup &amp; Import</h3>
         <button class="btn-export green" onclick="openExportModal('trips')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export trip data
+          Export trip data as Excel
         </button>
         <button class="btn-export green" onclick="openExportModal('expenses')">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -799,20 +801,26 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <button class="modal-close" onclick="closeModal('export-trips-modal')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="export-mode-tabs">
-        <button class="export-tab active" id="trip-tab-month" onclick="setExportTab('trip','month')">By Month</button>
-        <button class="export-tab" id="trip-tab-range" onclick="setExportTab('trip','range')">Date Range</button>
-      </div>
-      <div id="trip-export-month" class="export-panel">
-        <div class="form-group" style="margin-top:1rem">
-          <label>Select Month</label>
-          <input type="month" id="trip-export-month-val">
+      <label class="export-all-row">
+        <input type="checkbox" id="trip-export-all" onchange="toggleTripExportAll()">
+        <span>Export all trips</span>
+      </label>
+      <div id="trip-export-filters">
+        <div class="export-mode-tabs" style="margin-top:.75rem">
+          <button class="export-tab active" id="trip-tab-month" onclick="setExportTab('trip','month')">By Month</button>
+          <button class="export-tab" id="trip-tab-range" onclick="setExportTab('trip','range')">Date Range</button>
         </div>
-      </div>
-      <div id="trip-export-range" class="export-panel" style="display:none">
-        <div class="form-row" style="margin-top:1rem">
-          <div class="form-group"><label>From</label><input type="date" id="trip-export-from"></div>
-          <div class="form-group"><label>To</label><input type="date" id="trip-export-to"></div>
+        <div id="trip-export-month" class="export-panel">
+          <div class="form-group" style="margin-top:1rem">
+            <label>Select Month</label>
+            <input type="month" id="trip-export-month-val">
+          </div>
+        </div>
+        <div id="trip-export-range" class="export-panel" style="display:none">
+          <div class="form-row" style="margin-top:1rem">
+            <div class="form-group"><label>From</label><input type="date" id="trip-export-from"></div>
+            <div class="form-group"><label>To</label><input type="date" id="trip-export-to"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1529,6 +1537,11 @@ async function saveSettings() {
 
 // ── CSV EXPORT ─────────────────────────────────────────────────────────────
 // ── EXPORT MODALS ──────────────────────────────────────────────────────────
+function toggleTripExportAll() {
+  const checked = document.getElementById('trip-export-all').checked;
+  document.getElementById('trip-export-filters').style.display = checked ? 'none' : '';
+}
+
 function openExportModal(type) {
   const now = new Date();
   const monthVal = now.toISOString().slice(0,7);
@@ -1548,6 +1561,8 @@ function openExportModal(type) {
     document.getElementById('trip-export-month-val').value = monthVal;
     document.getElementById('trip-export-from').value = '';
     document.getElementById('trip-export-to').value = '';
+    document.getElementById('trip-export-all').checked = false;
+    document.getElementById('trip-export-filters').style.display = '';
     setExportTab('trip','month');
     openModal('export-trips-modal');
   }
@@ -1644,13 +1659,27 @@ function doExportExpenses() {
 }
 
 function doExportTrips() {
-  const range = getExportDateRange('trip');
-  if (!range) return;
-  const filtered = trips.filter(t => {
-    const d = new Date(t.date);
-    return d >= range.from && d <= range.to;
-  });
+  const exportAll = document.getElementById('trip-export-all').checked;
+  let filtered, fileLabel, rangeLabel;
+
+  if (exportAll) {
+    filtered = trips;
+    fileLabel = 'all';
+    rangeLabel = 'All Trips';
+  } else {
+    const range = getExportDateRange('trip');
+    if (!range) return;
+    filtered = trips.filter(t => {
+      const d = new Date(t.date);
+      return d >= range.from && d <= range.to;
+    });
+    fileLabel = range.label;
+    rangeLabel = fileLabel.replace(/_to_/, ' - ');
+  }
+
   if (!filtered.length) { toast('No trips in selected period','error'); return; }
+
+  const userName = document.getElementById('settings-name').value.trim() || 'Unknown';
 
   const rows = filtered.map(t => ({
     'Trip ID': t.trip_id||t.id,
@@ -1679,7 +1708,7 @@ function doExportTrips() {
   ws['!cols'] = [15,12,8,20,16,25,25,7,6,8,10,8,12,12,10,10,20,6,25,20].map(w => ({ wch: w }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Trips');
-  XLSX.writeFile(wb, `trips_${range.label}.xlsx`);
+  XLSX.writeFile(wb, `${userName}_trips_${fileLabel}.xlsx`);
 
   closeModal('export-trips-modal');
   toast(`Exported ${filtered.length} trips to Excel`, 'success');
