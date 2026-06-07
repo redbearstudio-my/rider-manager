@@ -1822,12 +1822,12 @@ function importExcel(event) {
       const withId = rows.filter(r => r.trip_id);
       const withoutId = rows.filter(r => !r.trip_id);
 
-      // Upsert rows with trip_id — skip if already exists
+      // Upsert rows with trip_id — update if exists, insert if new
       for (let i = 0; i < withId.length; i += 50) {
         const batch = withId.slice(i, i + 50);
-        const { error } = await sb.from('trips').upsert(batch, { onConflict: 'trip_id', ignoreDuplicates: true });
+        const { data, error } = await sb.from('trips').upsert(batch, { onConflict: 'trip_id', ignoreDuplicates: false }).select('id');
         if (error) return toast('Import error: ' + error.message, 'error');
-        imported += batch.length;
+        imported += (data || batch).length;
       }
 
       // Insert rows without trip_id as new records (trip_id = null)
