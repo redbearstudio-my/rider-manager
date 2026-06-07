@@ -2,6 +2,29 @@
 
 ---
 
+## v1.8 — 8 June 2026
+
+### ⚙️ Settings — Button Labels & Icons
+- "Export trips to CSV" → "Export trip data as Excel"
+- "Export expenses to CSV" → "Export expenses data"
+- "Import trips from CSV" → "Import trip from Excel"
+- Export buttons now use ↑ upload arrow icon; Import button keeps ↓ download arrow
+- Removed CSV columns hint text
+
+### 📥 Import Trips — Excel Format
+- Import now reads `.xlsx` files using SheetJS (previously CSV)
+- Columns match exactly what the export produces: Trip ID, Date, Time, Guest Name, Guest Contact, Pickup/Dropoff Locations, Adults, Kids, Small/Medium/Big Luggage, Charge (RM), Status, Completed, Cancelled, Cancellation Reason, Paid, Notes
+- Handles time format `06:00:00` and `06:00` correctly
+- Smart dedup: compares incoming rows against existing data before importing
+- Toast shows accurate breakdown: `X new, X updated, X unchanged, X invalid`
+
+### 📤 Export Trips — Export All option
+- Trip export modal now has an **Export all trips** checkbox
+- When checked, hides month/date range fields and exports entire dataset
+- Filename: `Username_trips_all.xlsx`
+
+---
+
 ## v1.7 — 7 June 2026
 
 ### 🔁 Import Trips — Duplicate Prevention
