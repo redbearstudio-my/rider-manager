@@ -956,8 +956,10 @@ async function initApp(user) {
 }
 
 async function loadAppSettings() {
-  const { data } = await sb.from('app_settings').select('*');
-  if (data) data.forEach(r => { appSettings[r.key] = r.value; });
+  try {
+    const { data } = await sb.from('app_settings').select('*');
+    if (data) data.forEach(r => { appSettings[r.key] = r.value; });
+  } catch(e) { console.warn('loadAppSettings error:', e); }
 }
 
 async function checkSubscriptionAccess() {
@@ -1056,27 +1058,33 @@ let tripTab = 'upcoming', reportPeriod = 'week';
 })();
 
 async function loadProfile() {
-  const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
-  if (!data) {
-    // New user — create profile with trial start date and email
-    await sb.from('profiles').upsert({
-      id: currentUser.id,
-      name: currentUser.user_metadata?.full_name || currentUser.email.split('@')[0],
-      email: currentUser.email,
-      trial_start_date: new Date().toISOString(),
-      subscription_status: 'trial',
-      is_approved: false,
-      updated_at: new Date().toISOString()
-    });
-    const { data: newData } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
-    userProfile = newData;
-  } else {
-    userProfile = data;
-    // Update email if missing
-    if (!data.email && currentUser.email) {
-      await sb.from('profiles').update({ email: currentUser.email }).eq('id', currentUser.id);
-      userProfile = { ...data, email: currentUser.email };
+  try {
+    const { data, error } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+    if (!data) {
+      // New user — create profile
+      const { error: upsertError } = await sb.from('profiles').upsert({
+        id: currentUser.id,
+        name: currentUser.user_metadata?.full_name || currentUser.email.split('@')[0],
+        email: currentUser.email,
+        trial_start_date: new Date().toISOString(),
+        subscription_status: 'trial',
+        is_approved: false,
+        updated_at: new Date().toISOString()
+      });
+      if (!upsertError) {
+        const { data: newData } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+        userProfile = newData;
+      }
+    } else {
+      userProfile = data;
+      // Update email if missing (best effort, ignore errors)
+      if (!data.email && currentUser.email) {
+        sb.from('profiles').update({ email: currentUser.email }).eq('id', currentUser.id).then(() => {});
+        userProfile = { ...data, email: currentUser.email };
+      }
     }
+  } catch(e) {
+    console.warn('loadProfile error:', e);
   }
   const name = userProfile?.name || currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
   document.getElementById('sb-name').textContent = name;
