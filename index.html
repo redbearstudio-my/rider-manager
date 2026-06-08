@@ -1352,7 +1352,7 @@ function tripCard(t) {
     t.status === 'completed' ? '<span class="badge badge-completed">Completed</span>' :
     '<span class="badge badge-pending">Pending</span>';
   const payBadge = t.paid ? '<span class="badge badge-paid">Paid</span>' : '<span class="badge badge-unpaid">Unpaid</span>';
-  const actions = `
+  const actions = isReadOnly ? '' : `
     <button class="btn-sm" onclick="editTrip('${t.id}')">Edit</button>
     ${!t.cancelled ? `<button class="btn-sm" onclick="markComplete('${t.id}')">✓ Complete</button>` : ''}
     ${!t.paid && !t.cancelled ? `<button class="btn-sm" onclick="markPaid('${t.id}')">💰 Mark Paid</button>` : ''}
@@ -1531,14 +1531,17 @@ async function saveTrip() {
 function editTrip(id) { openTripModal(trips.find(t => t.id === id)); }
 
 async function markComplete(id) {
+  if (guardReadOnly()) return;
   await sb.from('trips').update({ status: 'completed', completed: true }).eq('id', id);
   toast('Marked as completed', 'success'); await loadAll();
 }
 async function markPaid(id) {
+  if (guardReadOnly()) return;
   await sb.from('trips').update({ paid: true }).eq('id', id);
   toast('Marked as paid', 'success'); await loadAll();
 }
 function openCancelModal(id) {
+  if (guardReadOnly()) return;
   document.getElementById('cancel-trip-id').value = id;
   document.getElementById('cancel-reason').value = '';
   openModal('cancel-modal');
