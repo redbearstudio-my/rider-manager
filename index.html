@@ -85,6 +85,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .admin-btn.trial{border-color:#fde68a;color:#92400e}
 .admin-btn.trial:hover{background:#fef3c7}
 .admin-user-new{border-color:#7c3aed!important;background:#faf5ff!important}
+.read-only-mode .btn-save,
+.read-only-mode .btn-primary,
+.read-only-mode .loc-add-btn,
+.read-only-mode .exp-actions,
+.read-only-mode [onclick*="openTripModal"],
+.read-only-mode [onclick*="openExpenseModal"],
+.read-only-mode [onclick*="editTrip"],
+.read-only-mode [onclick*="deleteTrip"],
+.read-only-mode [onclick*="editExpense"],
+.read-only-mode [onclick*="deleteExpense"],
+.read-only-mode [onclick*="openBusyModal"],
+.read-only-mode .btn-icon { display:none!important }
 .sidebar-footer{padding:1rem 1.25rem;border-top:1px solid var(--border)}
 .user-chip{display:flex;align-items:center;gap:.625rem}
 .user-av{width:34px;height:34px;background:var(--teal-light);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:.875rem;color:var(--teal-dark);flex-shrink:0}
@@ -962,8 +974,9 @@ async function checkSubscriptionAccess() {
   const daysLeft = trialDays - daysSinceStart;
 
   if (status === 'active' && isApproved) {
-    // Full access — hide banner
+    // Full access
     document.getElementById('trial-banner').style.display = 'none';
+    setReadOnly(false);
     return true;
   }
 
@@ -972,29 +985,45 @@ async function checkSubscriptionAccess() {
     document.getElementById('trial-banner').style.display = 'flex';
     document.getElementById('trial-banner-text').textContent =
       `Free trial: ${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining`;
+    setReadOnly(false);
     return true;
   }
 
-  // Blocked or trial expired — show blocked screen
+  // Blocked or trial expired — read-only mode
   const price = appSettings.subscription_price || '30';
   const waNum = appSettings.admin_whatsapp || '60122552829';
   const adminName = appSettings.admin_name || 'Admin';
-  document.getElementById('blocked-price').textContent = `RM ${price}`;
-  document.getElementById('blocked-msg').textContent =
-    status === 'blocked'
-      ? 'Your account has been suspended. Please contact admin to reactivate.'
-      : 'Your free trial has ended. Subscribe to continue using Rider Manager.';
-  document.getElementById('blocked-wa-btn').href =
-    `https://wa.me/${waNum}?text=Hi ${adminName}, I'd like to subscribe to Rider Manager (RM ${price}/month).`;
-  document.getElementById('loading-screen').style.display = 'none';
-  document.getElementById('blocked-screen').style.display = 'flex';
-  return false;
+  const msg = status === 'blocked'
+    ? 'Your account has been suspended — view only.'
+    : 'Your free trial has ended — view only.';
+  const waLink = `https://wa.me/${waNum}?text=Hi ${adminName}, I'd like to subscribe to Rider Manager (RM ${price}/month).`;
+
+  // Show red banner with subscribe link instead of blocking
+  document.getElementById('trial-banner').style.display = 'flex';
+  document.getElementById('trial-banner').style.background = 'linear-gradient(135deg,#ef4444,#dc2626)';
+  document.getElementById('trial-banner-text').innerHTML =
+    `${msg} <a href="${waLink}" target="_blank" style="color:#fff;font-weight:800;text-decoration:underline;margin-left:.5rem">Subscribe RM ${price}/mo →</a>`;
+  setReadOnly(true);
+  return true;
 }
 const SUPA_URL = 'https://gqavlaetwrvyugrqarcz.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxYXZsYWV0d3J2eXVncnFhcmN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNzA1NTcsImV4cCI6MjA5MTY0NjU1N30.QlEt3hevzpoEDy_RkCJsMW4Oyv9Jbp4-GuC_v-yUUXQ';
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 const ADMIN_EMAIL = 'redbear.my@gmail.com';
-let appSettings = {};
+let isReadOnly = false;
+
+function setReadOnly(val) {
+  isReadOnly = val;
+  document.body.classList.toggle('read-only-mode', val);
+  // Hide FAB
+  const fab = document.getElementById('fab-btn');
+  if (fab) fab.style.display = val ? 'none' : 'flex';
+}
+
+function guardReadOnly() {
+  if (isReadOnly) { toast('Subscribe to make changes', 'error'); return true; }
+  return false;
+}
 
 // ── STATE ──────────────────────────────────────────────────────────────────
 let currentUser = null, userProfile = null;
@@ -1419,6 +1448,7 @@ function getLocFields(containerId) {
 
 // ── TRIP CRUD ──────────────────────────────────────────────────────────────
 function openTripModal(trip = null) {
+  if (guardReadOnly()) return;
   const isEdit = !!trip;
   document.getElementById('trip-modal-title').textContent = isEdit ? 'Edit Trip' : 'New Trip';
   document.getElementById('trip-id-edit').value = isEdit ? trip.id : '';
@@ -1587,6 +1617,7 @@ function showCalDetail(key) {
     : '';
 }
 function openBusyModal(busy = null) {
+  if (guardReadOnly()) return;
   document.getElementById('busy-modal-title').textContent = busy ? 'Edit Busy Time' : 'Add Busy Time';
   document.getElementById('busy-id-edit').value = busy ? busy.id : '';
   document.getElementById('b-date').value = busy ? busy.date : (calSelected || new Date().toISOString().split('T')[0]);
@@ -1714,6 +1745,7 @@ function renderExpenses() {
     : emptyState(isFiltered ? 'No expenses match your filters' : 'No expenses recorded');
 }
 function openExpenseModal(exp = null) {
+  if (guardReadOnly()) return;
   document.getElementById('exp-modal-title').textContent = exp ? 'Edit Expense' : 'New Expense';
   document.getElementById('exp-id-edit').value = exp ? exp.id : '';
   document.getElementById('e-date').value = exp ? exp.date : new Date().toISOString().split('T')[0];
