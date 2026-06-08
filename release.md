@@ -2,6 +2,25 @@
 
 ---
 
+## v1.9 — 8 June 2026
+
+### 🔐 Subscription System
+- **Free trial** — new users automatically get a 7-day free trial on first login
+- **Trial banner** — amber sticky banner at top of content showing "Free trial: X days remaining"
+- **Blocked screen** — shown when trial expires or account is blocked; displays subscription price, admin name, and WhatsApp contact button
+- **Admin panel** — hidden nav item (visible only to `redbear.my@gmail.com`):
+  - Lists all users with name, join date, trial status and days remaining
+  - Approve / Reset Trial / Block buttons per user
+  - Configurable subscription price (saved to `app_settings` table)
+- Admin always has full access regardless of subscription status
+
+### 🗄️ Supabase Changes
+- `profiles` table: added `trial_start_date`, `is_approved`, `subscription_status` columns
+- New `app_settings` table: `subscription_price`, `admin_whatsapp`, `admin_name`, `trial_days`
+- RLS policies: admin can read/update all profiles; users can read app_settings
+
+---
+
 ## v1.8 — 8 June 2026
 
 ### ⚙️ Settings — Button Labels & Icons
