@@ -2,6 +2,32 @@
 
 ---
 
+## v2.0 — 8 June 2026
+
+### 👤 Admin Panel — Email Display
+- User email now shown instead of UUID
+- Email stored in `profiles` on signup/login automatically
+- Backfills email for existing users on next login
+- SQL backfill available: `UPDATE profiles p SET email = u.email FROM auth.users u WHERE p.id = u.id`
+
+### 📱 Admin — Mobile Bottom Nav
+- Admin tab now appears in mobile bottom nav (hidden for non-admin users)
+- Red dot badge on Admin tab when new users signed up in last 24h
+
+### 🔔 New User Notifications
+- On login, admin sees red dot badge on Admin nav if new users joined in last 24h
+- New users (last 24h) highlighted with purple border and NEW badge in admin panel
+- Newest users sorted to top of list
+
+### 🔒 Read-Only Mode (replaces hard block)
+- Blocked/expired users now see the app in read-only mode instead of a hard block screen
+- Red banner at top: *"Your subscription has ended. You're in view-only mode."*
+- All action buttons hidden: no FAB, no Edit/Delete/Complete/Mark Paid/Cancel on trips
+- Green WhatsApp button in banner: *"Whatsapp to subscribe → RM 30/month"*
+- Pre-filled WhatsApp message includes user's name and email
+
+---
+
 ## v1.9 — 8 June 2026
 
 ### 🔐 Subscription System
