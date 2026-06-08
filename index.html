@@ -1143,8 +1143,12 @@ async function renderAdminPanel() {
   if (currentUser.email !== ADMIN_EMAIL) return;
   document.getElementById('admin-price-input').value = appSettings.subscription_price || '30';
 
-  const { data: profiles } = await sb.from('profiles').select('*').order('created_at', { ascending: false });
-  if (!profiles) return;
+  const { data: profiles, error } = await sb.from('profiles').select('*');
+  if (error) { toast('Admin error: ' + error.message, 'error'); return; }
+  if (!profiles || !profiles.length) {
+    document.getElementById('admin-users-list').innerHTML = '<p style="color:var(--muted)">No users found.</p>';
+    return;
+  }
 
   const total = profiles.length;
   const active = profiles.filter(p => p.subscription_status === 'active' && p.is_approved).length;
@@ -1155,7 +1159,7 @@ async function renderAdminPanel() {
   const now = new Date();
 
   document.getElementById('admin-users-list').innerHTML = profiles.map(p => {
-    const trialStart = p.trial_start_date ? new Date(p.trial_start_date) : new Date(p.created_at);
+    const trialStart = p.trial_start_date ? new Date(p.trial_start_date) : (p.created_at ? new Date(p.created_at) : new Date());
     const daysLeft = trialDays - Math.floor((now - trialStart) / (1000 * 60 * 60 * 24));
     const status = p.subscription_status || 'trial';
     const isApproved = p.is_approved || false;
@@ -1177,7 +1181,7 @@ async function renderAdminPanel() {
       <div class="user-name">${p.name || 'Unknown'}</div>
       <div class="user-email">${p.id}</div>
       <div class="user-meta">
-        Joined: ${new Date(p.created_at || p.trial_start_date).toLocaleDateString('en-MY')}
+        Joined: ${(p.created_at || p.trial_start_date) ? new Date(p.created_at || p.trial_start_date).toLocaleDateString("en-MY") : "Unknown"}
         &nbsp;·&nbsp; <span class="status-badge ${statusClass}">${statusLabel}</span>
         ${isApproved ? ' &nbsp;·&nbsp; <span style="color:var(--teal);font-size:.75rem;font-weight:600">✓ Approved</span>' : ''}
       </div>
