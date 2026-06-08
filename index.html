@@ -942,8 +942,8 @@ async function initApp(user) {
   await loadAppSettings();
   const access = await checkSubscriptionAccess();
   if (!access) return;
-  await loadAll();
-  showApp();
+  showApp(); // Show app immediately, don't wait for data
+  try { await loadAll(); } catch(e) { console.warn('loadAll error:', e); }
   if (currentUser.email === ADMIN_EMAIL) {
     document.getElementById('nav-admin').style.display = 'flex';
     document.getElementById('bnav-admin').style.display = 'flex';
