@@ -84,6 +84,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .admin-btn.block:hover{background:#fee2e2}
 .admin-btn.trial{border-color:#fde68a;color:#92400e}
 .admin-btn.trial:hover{background:#fef3c7}
+.admin-user-new{border-color:#7c3aed!important;background:#faf5ff!important}
+.read-only-mode .btn-save,
+.read-only-mode .btn-primary,
+.read-only-mode .loc-add-btn,
+.read-only-mode .exp-actions,
+.read-only-mode [onclick*="openTripModal"],
+.read-only-mode [onclick*="openExpenseModal"],
+.read-only-mode [onclick*="editTrip"],
+.read-only-mode [onclick*="deleteTrip"],
+.read-only-mode [onclick*="editExpense"],
+.read-only-mode [onclick*="deleteExpense"],
+.read-only-mode [onclick*="openBusyModal"],
+.read-only-mode .btn-icon { display:none!important }
 .sidebar-footer{padding:1rem 1.25rem;border-top:1px solid var(--border)}
 .user-chip{display:flex;align-items:center;gap:.625rem}
 .user-av{width:34px;height:34px;background:var(--teal-light);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:.875rem;color:var(--teal-dark);flex-shrink:0}
@@ -414,6 +427,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     </div>
     <div class="bnav" onclick="navigate('settings')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06-.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings
+    </div>
+    <div class="bnav" id="bnav-admin" style="display:none" onclick="navigate('admin')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      Admin
     </div>
   </nav>
 
@@ -925,16 +942,24 @@ async function initApp(user) {
   await loadAppSettings();
   const access = await checkSubscriptionAccess();
   if (!access) return;
-  await loadAll();
   showApp();
+  try { await loadAll(); } catch(e) { console.warn('loadAll error:', e); }
   if (currentUser.email === ADMIN_EMAIL) {
     document.getElementById('nav-admin').style.display = 'flex';
+    document.getElementById('bnav-admin').style.display = 'flex';
+    // Check for new users and show badge
+    const { data: newUsers } = await sb.from('profiles')
+      .select('id')
+      .gt('trial_start_date', new Date(Date.now() - 24*60*60*1000).toISOString());
+    if (newUsers?.length) updateAdminBadge(newUsers.length);
   }
 }
 
 async function loadAppSettings() {
-  const { data } = await sb.from('app_settings').select('*');
-  if (data) data.forEach(r => { appSettings[r.key] = r.value; });
+  try {
+    const { data } = await sb.from('app_settings').select('*');
+    if (data) data.forEach(r => { appSettings[r.key] = r.value; });
+  } catch(e) { console.warn('loadAppSettings error:', e); }
 }
 
 async function checkSubscriptionAccess() {
@@ -951,8 +976,9 @@ async function checkSubscriptionAccess() {
   const daysLeft = trialDays - daysSinceStart;
 
   if (status === 'active' && isApproved) {
-    // Full access — hide banner
+    // Full access
     document.getElementById('trial-banner').style.display = 'none';
+    setReadOnly(false);
     return true;
   }
 
@@ -961,31 +987,56 @@ async function checkSubscriptionAccess() {
     document.getElementById('trial-banner').style.display = 'flex';
     document.getElementById('trial-banner-text').textContent =
       `Free trial: ${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining`;
+    setReadOnly(false);
     return true;
   }
 
-  // Blocked or trial expired — show blocked screen
+  // Blocked or trial expired — read-only mode
   const price = appSettings.subscription_price || '30';
   const waNum = appSettings.admin_whatsapp || '60122552829';
   const adminName = appSettings.admin_name || 'Admin';
-  document.getElementById('blocked-price').textContent = `RM ${price}`;
-  document.getElementById('blocked-msg').textContent =
-    status === 'blocked'
-      ? 'Your account has been suspended. Please contact admin to reactivate.'
-      : 'Your free trial has ended. Subscribe to continue using Rider Manager.';
-  document.getElementById('blocked-wa-btn').href =
-    `https://wa.me/${waNum}?text=Hi ${adminName}, I'd like to subscribe to Rider Manager (RM ${price}/month).`;
-  document.getElementById('loading-screen').style.display = 'none';
-  document.getElementById('blocked-screen').style.display = 'flex';
-  return false;
+  const msg = status === 'blocked'
+    ? `Your subscription has ended. You're in view-only mode.`
+    : `Your free trial has ended. You're in view-only mode.`;
+  const userName = userProfile?.name || currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
+  const userEmail = userProfile?.email || currentUser.email || '';
+  const waMsg = `Hi ${adminName}, I'd like to subscribe to Rider Manager (RM ${price}/month). I am ${userName}, my email is ${userEmail}`;
+  const waLink = `https://wa.me/${waNum}?text=${encodeURIComponent(waMsg)}`;
+
+  document.getElementById('trial-banner').style.display = 'flex';
+  document.getElementById('trial-banner').style.background = 'linear-gradient(135deg,#ef4444,#dc2626)';
+  document.getElementById('trial-banner').style.flexWrap = 'wrap';
+  document.getElementById('trial-banner').style.gap = '.5rem';
+  document.getElementById('trial-banner-text').innerHTML =
+    `<span>${msg}</span>
+     <a href="${waLink}" target="_blank" style="display:inline-flex;align-items:center;gap:.35rem;background:#25d366;color:#fff;font-weight:700;font-size:.78rem;padding:.3rem .7rem;border-radius:20px;text-decoration:none;white-space:nowrap">
+       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+       Whatsapp to subscribe → RM ${price}/month
+     </a>`;
+  setReadOnly(true);
+  return true;
 }
 const SUPA_URL = 'https://gqavlaetwrvyugrqarcz.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxYXZsYWV0d3J2eXVncnFhcmN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNzA1NTcsImV4cCI6MjA5MTY0NjU1N30.QlEt3hevzpoEDy_RkCJsMW4Oyv9Jbp4-GuC_v-yUUXQ';
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 const ADMIN_EMAIL = 'redbear.my@gmail.com';
-let appSettings = {};
+let isReadOnly = false;
+
+function setReadOnly(val) {
+  isReadOnly = val;
+  document.body.classList.toggle('read-only-mode', val);
+  // Hide FAB
+  const fab = document.getElementById('fab-btn');
+  if (fab) fab.style.display = val ? 'none' : 'flex';
+}
+
+function guardReadOnly() {
+  if (isReadOnly) { toast('Subscribe to make changes', 'error'); return true; }
+  return false;
+}
 
 // ── STATE ──────────────────────────────────────────────────────────────────
+let appSettings = {};
 let currentUser = null, userProfile = null;
 let trips = [], expenses = [], busyTimes = [];
 let calDate = new Date(), calSelected = null;
@@ -1016,21 +1067,33 @@ let tripTab = 'upcoming', reportPeriod = 'week';
 })();
 
 async function loadProfile() {
-  const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
-  if (!data) {
-    // New user — create profile with trial start date
-    await sb.from('profiles').upsert({
-      id: currentUser.id,
-      name: currentUser.user_metadata?.full_name || currentUser.email.split('@')[0],
-      trial_start_date: new Date().toISOString(),
-      subscription_status: 'trial',
-      is_approved: false,
-      updated_at: new Date().toISOString()
-    });
-    const { data: newData } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
-    userProfile = newData;
-  } else {
-    userProfile = data;
+  try {
+    const { data, error } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+    if (!data) {
+      // New user — create profile
+      const { error: upsertError } = await sb.from('profiles').upsert({
+        id: currentUser.id,
+        name: currentUser.user_metadata?.full_name || currentUser.email.split('@')[0],
+        email: currentUser.email,
+        trial_start_date: new Date().toISOString(),
+        subscription_status: 'trial',
+        is_approved: false,
+        updated_at: new Date().toISOString()
+      });
+      if (!upsertError) {
+        const { data: newData } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+        userProfile = newData;
+      }
+    } else {
+      userProfile = data;
+      // Update email if missing (best effort, ignore errors)
+      if (!data.email && currentUser.email) {
+        sb.from('profiles').update({ email: currentUser.email }).eq('id', currentUser.id).then(() => {});
+        userProfile = { ...data, email: currentUser.email };
+      }
+    }
+  } catch(e) {
+    console.warn('loadProfile error:', e);
   }
   const name = userProfile?.name || currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
   document.getElementById('sb-name').textContent = name;
@@ -1139,6 +1202,23 @@ function navigate(page) {
 }
 
 // ── ADMIN PANEL ────────────────────────────────────────────────────────────
+function updateAdminBadge(count) {
+  const sidebar = document.getElementById('nav-admin');
+  const bnav = document.getElementById('bnav-admin');
+  const badge = count > 0 ? `<span style="background:#ef4444;color:#fff;font-size:.6rem;font-weight:700;padding:.1rem .35rem;border-radius:10px;margin-left:.25rem">${count}</span>` : '';
+  if (sidebar) sidebar.querySelector('.admin-badge').outerHTML = `<span class="admin-badge">ADMIN</span>${badge}`;
+  if (bnav) {
+    const existing = bnav.querySelector('.notif-dot');
+    if (count > 0 && !existing) {
+      const dot = document.createElement('span');
+      dot.className = 'notif-dot';
+      dot.style.cssText = 'position:absolute;top:2px;right:2px;width:8px;height:8px;background:#ef4444;border-radius:50%';
+      bnav.style.position = 'relative';
+      bnav.appendChild(dot);
+    } else if (count === 0 && existing) existing.remove();
+  }
+}
+
 async function renderAdminPanel() {
   if (currentUser.email !== ADMIN_EMAIL) return;
   document.getElementById('admin-price-input').value = appSettings.subscription_price || '30';
@@ -1150,19 +1230,25 @@ async function renderAdminPanel() {
     return;
   }
 
+  const trialDays = parseInt(appSettings.trial_days || '7');
+  const now = new Date();
+  const oneDayAgo = new Date(now - 24 * 60 * 60 * 1000);
+
+  const newUsers = profiles.filter(p => p.trial_start_date && new Date(p.trial_start_date) > oneDayAgo);
   const total = profiles.length;
   const active = profiles.filter(p => p.subscription_status === 'active' && p.is_approved).length;
   document.getElementById('admin-total-users').textContent = total;
   document.getElementById('admin-active-users').textContent = active;
 
-  const trialDays = parseInt(appSettings.trial_days || '7');
-  const now = new Date();
+  // Sort: newest first
+  profiles.sort((a, b) => new Date(b.trial_start_date || 0) - new Date(a.trial_start_date || 0));
 
   document.getElementById('admin-users-list').innerHTML = profiles.map(p => {
     const trialStart = p.trial_start_date ? new Date(p.trial_start_date) : (p.created_at ? new Date(p.created_at) : new Date());
     const daysLeft = trialDays - Math.floor((now - trialStart) / (1000 * 60 * 60 * 24));
     const status = p.subscription_status || 'trial';
     const isApproved = p.is_approved || false;
+    const isNew = p.trial_start_date && new Date(p.trial_start_date) > oneDayAgo;
 
     let statusLabel = status;
     let statusClass = `status-${status}`;
@@ -1170,18 +1256,22 @@ async function renderAdminPanel() {
       statusLabel = daysLeft > 0 ? `Trial (${daysLeft}d left)` : 'Trial Expired';
       statusClass = daysLeft > 0 ? 'status-trial' : 'status-expired';
     } else if (status === 'active' && isApproved) {
-      statusLabel = 'Active';
-      statusClass = 'status-active';
+      statusLabel = 'Active'; statusClass = 'status-active';
     } else if (status === 'blocked') {
-      statusLabel = 'Blocked';
-      statusClass = 'status-blocked';
+      statusLabel = 'Blocked'; statusClass = 'status-blocked';
     }
 
-    return `<div class="admin-user-card">
-      <div class="user-name">${p.name || 'Unknown'}</div>
-      <div class="user-email">${p.id}</div>
+    const email = p.email || '—';
+    const joinDate = (p.created_at || p.trial_start_date) ? new Date(p.created_at || p.trial_start_date).toLocaleDateString('en-MY') : 'Unknown';
+
+    return `<div class="admin-user-card${isNew ? ' admin-user-new' : ''}">
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.2rem">
+        <div class="user-name">${p.name || 'Unknown'}</div>
+        ${isNew ? '<span style="background:#7c3aed;color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .4rem;border-radius:4px">NEW</span>' : ''}
+      </div>
+      <div class="user-email">${email}</div>
       <div class="user-meta">
-        Joined: ${(p.created_at || p.trial_start_date) ? new Date(p.created_at || p.trial_start_date).toLocaleDateString("en-MY") : "Unknown"}
+        Joined: ${joinDate}
         &nbsp;·&nbsp; <span class="status-badge ${statusClass}">${statusLabel}</span>
         ${isApproved ? ' &nbsp;·&nbsp; <span style="color:var(--teal);font-size:.75rem;font-weight:600">✓ Approved</span>' : ''}
       </div>
@@ -1192,6 +1282,8 @@ async function renderAdminPanel() {
       </div>
     </div>`;
   }).join('');
+
+  updateAdminBadge(newUsers.length);
 }
 
 async function setUserStatus(userId, status, isApproved) {
@@ -1268,7 +1360,7 @@ function tripCard(t) {
     t.status === 'completed' ? '<span class="badge badge-completed">Completed</span>' :
     '<span class="badge badge-pending">Pending</span>';
   const payBadge = t.paid ? '<span class="badge badge-paid">Paid</span>' : '<span class="badge badge-unpaid">Unpaid</span>';
-  const actions = `
+  const actions = isReadOnly ? '' : `
     <button class="btn-sm" onclick="editTrip('${t.id}')">Edit</button>
     ${!t.cancelled ? `<button class="btn-sm" onclick="markComplete('${t.id}')">✓ Complete</button>` : ''}
     ${!t.paid && !t.cancelled ? `<button class="btn-sm" onclick="markPaid('${t.id}')">💰 Mark Paid</button>` : ''}
@@ -1373,6 +1465,7 @@ function getLocFields(containerId) {
 
 // ── TRIP CRUD ──────────────────────────────────────────────────────────────
 function openTripModal(trip = null) {
+  if (guardReadOnly()) return;
   const isEdit = !!trip;
   document.getElementById('trip-modal-title').textContent = isEdit ? 'Edit Trip' : 'New Trip';
   document.getElementById('trip-id-edit').value = isEdit ? trip.id : '';
@@ -1446,14 +1539,17 @@ async function saveTrip() {
 function editTrip(id) { openTripModal(trips.find(t => t.id === id)); }
 
 async function markComplete(id) {
+  if (guardReadOnly()) return;
   await sb.from('trips').update({ status: 'completed', completed: true }).eq('id', id);
   toast('Marked as completed', 'success'); await loadAll();
 }
 async function markPaid(id) {
+  if (guardReadOnly()) return;
   await sb.from('trips').update({ paid: true }).eq('id', id);
   toast('Marked as paid', 'success'); await loadAll();
 }
 function openCancelModal(id) {
+  if (guardReadOnly()) return;
   document.getElementById('cancel-trip-id').value = id;
   document.getElementById('cancel-reason').value = '';
   openModal('cancel-modal');
@@ -1541,6 +1637,7 @@ function showCalDetail(key) {
     : '';
 }
 function openBusyModal(busy = null) {
+  if (guardReadOnly()) return;
   document.getElementById('busy-modal-title').textContent = busy ? 'Edit Busy Time' : 'Add Busy Time';
   document.getElementById('busy-id-edit').value = busy ? busy.id : '';
   document.getElementById('b-date').value = busy ? busy.date : (calSelected || new Date().toISOString().split('T')[0]);
@@ -1668,6 +1765,7 @@ function renderExpenses() {
     : emptyState(isFiltered ? 'No expenses match your filters' : 'No expenses recorded');
 }
 function openExpenseModal(exp = null) {
+  if (guardReadOnly()) return;
   document.getElementById('exp-modal-title').textContent = exp ? 'Edit Expense' : 'New Expense';
   document.getElementById('exp-id-edit').value = exp ? exp.id : '';
   document.getElementById('e-date').value = exp ? exp.date : new Date().toISOString().split('T')[0];
