@@ -981,7 +981,12 @@ async function initApp(user) {
   currentUser = user;
   await loadProfile();
   await loadAppSettings();
-  const access = await checkSubscriptionAccess();
+  let access = true;
+  try {
+    access = await checkSubscriptionAccess();
+  } catch(e) {
+    console.error('checkSubscriptionAccess error:', e);
+  }
   if (!access) return;
   showApp();
   try { await loadAll(); } catch(e) { console.warn('loadAll error:', e); }
@@ -1149,7 +1154,8 @@ function showApp() {
   document.getElementById('loading-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('main-app').style.display = 'flex';
-  document.getElementById('fab-btn').style.display = 'flex';
+  // Only show FAB if not in read-only mode
+  document.getElementById('fab-btn').style.display = isReadOnly ? 'none' : 'flex';
   document.getElementById('home-date').textContent = new Date().toLocaleDateString('en-MY', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
 }
 function showView(v) {
