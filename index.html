@@ -84,6 +84,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .admin-btn.block:hover{background:#fee2e2}
 .admin-btn.trial{border-color:#fde68a;color:#92400e}
 .admin-btn.trial:hover{background:#fef3c7}
+.admin-user-new{border-color:#7c3aed!important;background:#faf5ff!important}
 .sidebar-footer{padding:1rem 1.25rem;border-top:1px solid var(--border)}
 .user-chip{display:flex;align-items:center;gap:.625rem}
 .user-av{width:34px;height:34px;background:var(--teal-light);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:.875rem;color:var(--teal-dark);flex-shrink:0}
@@ -414,6 +415,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     </div>
     <div class="bnav" onclick="navigate('settings')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06-.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings
+    </div>
+    <div class="bnav" id="bnav-admin" style="display:none" onclick="navigate('admin')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      Admin
     </div>
   </nav>
 
@@ -929,6 +934,12 @@ async function initApp(user) {
   showApp();
   if (currentUser.email === ADMIN_EMAIL) {
     document.getElementById('nav-admin').style.display = 'flex';
+    document.getElementById('bnav-admin').style.display = 'flex';
+    // Check for new users and show badge
+    const { data: newUsers } = await sb.from('profiles')
+      .select('id')
+      .gt('trial_start_date', new Date(Date.now() - 24*60*60*1000).toISOString());
+    if (newUsers?.length) updateAdminBadge(newUsers.length);
   }
 }
 
@@ -1018,10 +1029,11 @@ let tripTab = 'upcoming', reportPeriod = 'week';
 async function loadProfile() {
   const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
   if (!data) {
-    // New user — create profile with trial start date
+    // New user — create profile with trial start date and email
     await sb.from('profiles').upsert({
       id: currentUser.id,
       name: currentUser.user_metadata?.full_name || currentUser.email.split('@')[0],
+      email: currentUser.email,
       trial_start_date: new Date().toISOString(),
       subscription_status: 'trial',
       is_approved: false,
@@ -1031,6 +1043,11 @@ async function loadProfile() {
     userProfile = newData;
   } else {
     userProfile = data;
+    // Update email if missing
+    if (!data.email && currentUser.email) {
+      await sb.from('profiles').update({ email: currentUser.email }).eq('id', currentUser.id);
+      userProfile = { ...data, email: currentUser.email };
+    }
   }
   const name = userProfile?.name || currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
   document.getElementById('sb-name').textContent = name;
@@ -1139,6 +1156,23 @@ function navigate(page) {
 }
 
 // ── ADMIN PANEL ────────────────────────────────────────────────────────────
+function updateAdminBadge(count) {
+  const sidebar = document.getElementById('nav-admin');
+  const bnav = document.getElementById('bnav-admin');
+  const badge = count > 0 ? `<span style="background:#ef4444;color:#fff;font-size:.6rem;font-weight:700;padding:.1rem .35rem;border-radius:10px;margin-left:.25rem">${count}</span>` : '';
+  if (sidebar) sidebar.querySelector('.admin-badge').outerHTML = `<span class="admin-badge">ADMIN</span>${badge}`;
+  if (bnav) {
+    const existing = bnav.querySelector('.notif-dot');
+    if (count > 0 && !existing) {
+      const dot = document.createElement('span');
+      dot.className = 'notif-dot';
+      dot.style.cssText = 'position:absolute;top:2px;right:2px;width:8px;height:8px;background:#ef4444;border-radius:50%';
+      bnav.style.position = 'relative';
+      bnav.appendChild(dot);
+    } else if (count === 0 && existing) existing.remove();
+  }
+}
+
 async function renderAdminPanel() {
   if (currentUser.email !== ADMIN_EMAIL) return;
   document.getElementById('admin-price-input').value = appSettings.subscription_price || '30';
@@ -1150,19 +1184,25 @@ async function renderAdminPanel() {
     return;
   }
 
+  const trialDays = parseInt(appSettings.trial_days || '7');
+  const now = new Date();
+  const oneDayAgo = new Date(now - 24 * 60 * 60 * 1000);
+
+  const newUsers = profiles.filter(p => p.trial_start_date && new Date(p.trial_start_date) > oneDayAgo);
   const total = profiles.length;
   const active = profiles.filter(p => p.subscription_status === 'active' && p.is_approved).length;
   document.getElementById('admin-total-users').textContent = total;
   document.getElementById('admin-active-users').textContent = active;
 
-  const trialDays = parseInt(appSettings.trial_days || '7');
-  const now = new Date();
+  // Sort: newest first
+  profiles.sort((a, b) => new Date(b.trial_start_date || 0) - new Date(a.trial_start_date || 0));
 
   document.getElementById('admin-users-list').innerHTML = profiles.map(p => {
     const trialStart = p.trial_start_date ? new Date(p.trial_start_date) : (p.created_at ? new Date(p.created_at) : new Date());
     const daysLeft = trialDays - Math.floor((now - trialStart) / (1000 * 60 * 60 * 24));
     const status = p.subscription_status || 'trial';
     const isApproved = p.is_approved || false;
+    const isNew = p.trial_start_date && new Date(p.trial_start_date) > oneDayAgo;
 
     let statusLabel = status;
     let statusClass = `status-${status}`;
@@ -1170,18 +1210,22 @@ async function renderAdminPanel() {
       statusLabel = daysLeft > 0 ? `Trial (${daysLeft}d left)` : 'Trial Expired';
       statusClass = daysLeft > 0 ? 'status-trial' : 'status-expired';
     } else if (status === 'active' && isApproved) {
-      statusLabel = 'Active';
-      statusClass = 'status-active';
+      statusLabel = 'Active'; statusClass = 'status-active';
     } else if (status === 'blocked') {
-      statusLabel = 'Blocked';
-      statusClass = 'status-blocked';
+      statusLabel = 'Blocked'; statusClass = 'status-blocked';
     }
 
-    return `<div class="admin-user-card">
-      <div class="user-name">${p.name || 'Unknown'}</div>
-      <div class="user-email">${p.id}</div>
+    const email = p.email || '—';
+    const joinDate = (p.created_at || p.trial_start_date) ? new Date(p.created_at || p.trial_start_date).toLocaleDateString('en-MY') : 'Unknown';
+
+    return `<div class="admin-user-card${isNew ? ' admin-user-new' : ''}">
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.2rem">
+        <div class="user-name">${p.name || 'Unknown'}</div>
+        ${isNew ? '<span style="background:#7c3aed;color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .4rem;border-radius:4px">NEW</span>' : ''}
+      </div>
+      <div class="user-email">${email}</div>
       <div class="user-meta">
-        Joined: ${(p.created_at || p.trial_start_date) ? new Date(p.created_at || p.trial_start_date).toLocaleDateString("en-MY") : "Unknown"}
+        Joined: ${joinDate}
         &nbsp;·&nbsp; <span class="status-badge ${statusClass}">${statusLabel}</span>
         ${isApproved ? ' &nbsp;·&nbsp; <span style="color:var(--teal);font-size:.75rem;font-weight:600">✓ Approved</span>' : ''}
       </div>
@@ -1192,6 +1236,8 @@ async function renderAdminPanel() {
       </div>
     </div>`;
   }).join('');
+
+  updateAdminBadge(newUsers.length);
 }
 
 async function setUserStatus(userId, status, isApproved) {
