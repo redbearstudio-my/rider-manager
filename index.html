@@ -85,6 +85,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .admin-btn.trial{border-color:#fde68a;color:#92400e}
 .admin-btn.trial:hover{background:#fef3c7}
 .admin-user-new{border-color:#7c3aed!important;background:#faf5ff!important}
+.admin-user-selected{border-color:var(--teal)!important;background:#f0fdfa!important}
 .read-only-mode .btn-save,
 .read-only-mode .btn-primary,
 .read-only-mode .loc-add-btn,
@@ -653,24 +654,70 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <h1>Admin Panel</h1>
         <p>Manage user subscriptions</p>
       </div>
+
+      <!-- Stats -->
       <div class="stats-row" style="margin-bottom:1rem">
-        <div class="stat-card">
-          <div class="label">Total Users</div>
-          <div class="value" id="admin-total-users">0</div>
+        <div class="stat-card"><div class="label">Total</div><div class="value" id="admin-total-users">0</div></div>
+        <div class="stat-card"><div class="label">Active</div><div class="value" style="color:var(--teal)" id="admin-active-users">0</div></div>
+        <div class="stat-card"><div class="label">Expiring Soon</div><div class="value" style="color:#f59e0b" id="admin-expiring-users">0</div></div>
+      </div>
+
+      <!-- Settings row -->
+      <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:140px;margin-bottom:0">
+          <label>Price (RM/month)</label>
+          <div style="display:flex;gap:.5rem">
+            <input type="number" id="admin-price-input" min="1" step="1" placeholder="30" style="flex:1">
+            <button class="btn-save" style="white-space:nowrap;padding:.5rem .75rem;font-size:.8rem" onclick="saveSubscriptionPrice()">Save</button>
+          </div>
         </div>
-        <div class="stat-card">
-          <div class="label">Active</div>
-          <div class="value" style="color:var(--teal)" id="admin-active-users">0</div>
+        <div class="form-group" style="flex:1;min-width:140px;margin-bottom:0">
+          <label>Reminder Days Before Expiry</label>
+          <div style="display:flex;gap:.5rem">
+            <input type="number" id="admin-reminder-days" min="1" step="1" placeholder="7" style="flex:1">
+            <button class="btn-save" style="white-space:nowrap;padding:.5rem .75rem;font-size:.8rem" onclick="saveReminderDays()">Save</button>
+          </div>
         </div>
       </div>
-      <div class="form-group">
-        <label>Subscription Price (RM/month)</label>
-        <div style="display:flex;gap:.5rem">
-          <input type="number" id="admin-price-input" min="1" step="1" placeholder="30">
-          <button class="btn-save" style="white-space:nowrap;padding:.5rem 1rem" onclick="saveSubscriptionPrice()">Save</button>
+
+      <!-- Filter tabs -->
+      <div class="exp-cat-chips" id="admin-filter-chips" style="margin-bottom:.75rem"></div>
+
+      <!-- Batch action bar (shown when users selected) -->
+      <div id="admin-batch-bar" style="display:none;background:#f0f9ff;border:1.5px solid #7dd3fc;border-radius:var(--radius-sm);padding:.875rem 1rem;margin-bottom:1rem">
+        <div style="font-size:.85rem;font-weight:600;margin-bottom:.75rem">
+          <span id="admin-batch-count">0</span> user(s) selected
+        </div>
+        <div style="font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:.5rem">QUICK RENEW (extend from current expiry or today if none)</div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem">
+          <button class="admin-btn approve" onclick="batchRenew(1)">+1 Month</button>
+          <button class="admin-btn approve" onclick="batchRenew(3)">+3 Months</button>
+          <button class="admin-btn approve" onclick="batchRenew(6)">+6 Months</button>
+          <button class="admin-btn approve" onclick="batchRenew(12)">+12 Months</button>
+          <button class="admin-btn approve" onclick="batchRenewForever()">♾ Forever</button>
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.75rem">
+          <input type="number" min="1" max="120" placeholder="Custom months" id="admin-batch-months"
+            style="width:130px;padding:.4rem .6rem;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem">
+          <button class="admin-btn approve" onclick="batchRenewCustom()">+ Custom Months</button>
+        </div>
+        <div style="font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:.5rem">SET SPECIFIC EXPIRY DATE</div>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <input type="date" id="admin-batch-date" style="flex:1;padding:.5rem;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem">
+          <button class="admin-btn approve" onclick="batchSetDate()">Set Date</button>
+          <button class="admin-btn block" onclick="batchBlock()">Block All</button>
         </div>
       </div>
-      <div class="card-title" style="margin-bottom:.75rem">Users</div>
+
+      <!-- Select all row -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;font-weight:600;cursor:pointer">
+          <input type="checkbox" id="admin-select-all" onchange="toggleSelectAll()" style="width:16px;height:16px;accent-color:var(--teal)">
+          Select All
+        </label>
+        <div id="admin-filter-count" style="font-size:.78rem;color:var(--muted)"></div>
+      </div>
+
       <div id="admin-users-list"></div>
     </div>
 
@@ -936,11 +983,43 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <div class="toast" id="toast"></div>
 
 <script>
+const SUPA_URL = 'https://gqavlaetwrvyugrqarcz.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxYXZsYWV0d3J2eXVncnFhcmN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNzA1NTcsImV4cCI6MjA5MTY0NjU1N30.QlEt3hevzpoEDy_RkCJsMW4Oyv9Jbp4-GuC_v-yUUXQ';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+const ADMIN_EMAIL = 'redbear.my@gmail.com';
+
+let appSettings = {};
+let isReadOnly = false;
+let currentUser = null, userProfile = null;
+let trips = [], expenses = [], busyTimes = [];
+let calDate = new Date(), calSelected = null;
+let tripTab = 'upcoming', reportPeriod = 'week';
+let expActiveCat = 'All';
+let adminFilter = 'all';
+let selectedUsers = new Set();
+
+function setReadOnly(val) {
+  isReadOnly = val;
+  document.body.classList.toggle('read-only-mode', val);
+  const fab = document.getElementById('fab-btn');
+  if (fab) fab.style.display = val ? 'none' : 'flex';
+}
+
+function guardReadOnly() {
+  if (isReadOnly) { toast('Subscribe to make changes', 'error'); return true; }
+  return false;
+}
+
 async function initApp(user) {
   currentUser = user;
   await loadProfile();
   await loadAppSettings();
-  const access = await checkSubscriptionAccess();
+  let access = true;
+  try {
+    access = await checkSubscriptionAccess();
+  } catch(e) {
+    console.error('checkSubscriptionAccess error:', e);
+  }
   if (!access) return;
   showApp();
   try { await loadAll(); } catch(e) { console.warn('loadAll error:', e); }
@@ -963,46 +1042,69 @@ async function loadAppSettings() {
 }
 
 async function checkSubscriptionAccess() {
-  // Admin always has access
   if (currentUser.email === ADMIN_EMAIL) return true;
 
   const profile = userProfile;
   const status = profile?.subscription_status || 'trial';
-  const isApproved = profile?.is_approved || false;
-  const trialStart = profile?.trial_start_date ? new Date(profile.trial_start_date) : new Date();
-  const trialDays = parseInt(appSettings.trial_days || '7');
-  const now = new Date();
-  const daysSinceStart = Math.floor((now - trialStart) / (1000 * 60 * 60 * 24));
-  const daysLeft = trialDays - daysSinceStart;
 
-  if (status === 'active' && isApproved) {
-    // Full access
-    document.getElementById('trial-banner').style.display = 'none';
-    setReadOnly(false);
+  // Manual block overrides everything
+  if (status === 'blocked') {
+    await showReadOnlyBanner('blocked');
     return true;
   }
 
-  if (status === 'trial' && daysLeft > 0) {
-    // Trial active — show banner
+  const expiryDate = profile?.subscription_expiry_date ? new Date(profile.subscription_expiry_date) : null;
+  const now = new Date();
+
+  if (expiryDate) {
+    if (expiryDate > now) {
+      const daysLeft = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+      const reminderDays = parseInt(appSettings.expiry_reminder_days || '7');
+      if (daysLeft <= reminderDays) {
+        document.getElementById('trial-banner').style.display = 'flex';
+        document.getElementById('trial-banner').style.background = 'linear-gradient(135deg,#f59e0b,#d97706)';
+        document.getElementById('trial-banner-text').innerHTML =
+          `⚠️ Subscription expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''} (${expiryDate.toLocaleDateString('en-MY')})`;
+      } else {
+        document.getElementById('trial-banner').style.display = 'none';
+      }
+      setReadOnly(false);
+      return true;
+    } else {
+      await showReadOnlyBanner('expired');
+      return true;
+    }
+  }
+
+  // No expiry date — on trial
+  const trialStart = profile?.trial_start_date ? new Date(profile.trial_start_date) : now;
+  const trialDays = parseInt(appSettings.trial_days || '7');
+  const daysLeft = trialDays - Math.floor((now - trialStart) / (1000 * 60 * 60 * 24));
+
+  if (daysLeft > 0) {
     document.getElementById('trial-banner').style.display = 'flex';
-    document.getElementById('trial-banner-text').textContent =
+    document.getElementById('trial-banner').style.background = 'linear-gradient(135deg,#f59e0b,#d97706)';
+    document.getElementById('trial-banner-text').innerHTML =
       `Free trial: ${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining`;
     setReadOnly(false);
     return true;
   }
 
-  // Blocked or trial expired — read-only mode
+  await showReadOnlyBanner('trial_expired');
+  return true;
+}
+
+async function showReadOnlyBanner(reason) {
   const price = appSettings.subscription_price || '30';
   const waNum = appSettings.admin_whatsapp || '60122552829';
   const adminName = appSettings.admin_name || 'Admin';
-  const msg = status === 'blocked'
-    ? `Your subscription has ended. You're in view-only mode.`
-    : `Your free trial has ended. You're in view-only mode.`;
   const userName = userProfile?.name || currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
   const userEmail = userProfile?.email || currentUser.email || '';
   const waMsg = `Hi ${adminName}, I'd like to subscribe to Rider Manager (RM ${price}/month). I am ${userName}, my email is ${userEmail}`;
   const waLink = `https://wa.me/${waNum}?text=${encodeURIComponent(waMsg)}`;
-
+  const msg = reason === 'blocked'
+    ? `Your account has been suspended. You're in view-only mode.`
+    : `Your subscription has ended. You're in view-only mode.`;
   document.getElementById('trial-banner').style.display = 'flex';
   document.getElementById('trial-banner').style.background = 'linear-gradient(135deg,#ef4444,#dc2626)';
   document.getElementById('trial-banner').style.flexWrap = 'wrap';
@@ -1014,57 +1116,8 @@ async function checkSubscriptionAccess() {
        Whatsapp to subscribe → RM ${price}/month
      </a>`;
   setReadOnly(true);
-  return true;
-}
-const SUPA_URL = 'https://gqavlaetwrvyugrqarcz.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxYXZsYWV0d3J2eXVncnFhcmN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNzA1NTcsImV4cCI6MjA5MTY0NjU1N30.QlEt3hevzpoEDy_RkCJsMW4Oyv9Jbp4-GuC_v-yUUXQ';
-const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
-const ADMIN_EMAIL = 'redbear.my@gmail.com';
-let isReadOnly = false;
-
-function setReadOnly(val) {
-  isReadOnly = val;
-  document.body.classList.toggle('read-only-mode', val);
-  // Hide FAB
-  const fab = document.getElementById('fab-btn');
-  if (fab) fab.style.display = val ? 'none' : 'flex';
 }
 
-function guardReadOnly() {
-  if (isReadOnly) { toast('Subscribe to make changes', 'error'); return true; }
-  return false;
-}
-
-// ── STATE ──────────────────────────────────────────────────────────────────
-let appSettings = {};
-let currentUser = null, userProfile = null;
-let trips = [], expenses = [], busyTimes = [];
-let calDate = new Date(), calSelected = null;
-let tripTab = 'upcoming', reportPeriod = 'week';
-
-// ── INIT ───────────────────────────────────────────────────────────────────
-(async () => {
-  // Small delay to let Supabase process Google OAuth tokens from URL hash
-  if (window.location.hash.includes('access_token')) {
-    await new Promise(r => setTimeout(r, 800));
-  }
-
-  const { data: { session } } = await sb.auth.getSession();
-  if (session) await initApp(session.user);
-  else showAuth();
-
-  sb.auth.onAuthStateChange(async (event, session) => {
-    if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
-      if (!currentUser || currentUser.id !== session.user.id) {
-        await initApp(session.user);
-      }
-    } else if (event === 'SIGNED_OUT') {
-      currentUser = null;
-      trips = []; expenses = []; busyTimes = [];
-      showAuth();
-    }
-  });
-})();
 
 async function loadProfile() {
   try {
@@ -1134,7 +1187,8 @@ function showApp() {
   document.getElementById('loading-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('main-app').style.display = 'flex';
-  document.getElementById('fab-btn').style.display = 'flex';
+  // Only show FAB if not in read-only mode
+  document.getElementById('fab-btn').style.display = isReadOnly ? 'none' : 'flex';
   document.getElementById('home-date').textContent = new Date().toLocaleDateString('en-MY', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
 }
 function showView(v) {
@@ -1202,11 +1256,25 @@ function navigate(page) {
 }
 
 // ── ADMIN PANEL ────────────────────────────────────────────────────────────
+
+function getUserStatus(p) {
+  if (p.subscription_status === 'blocked') return 'blocked';
+  if (p.subscription_expiry_date) {
+    return new Date(p.subscription_expiry_date) > new Date() ? 'active' : 'expired';
+  }
+  const trialDays = parseInt(appSettings.trial_days || '7');
+  const trialStart = p.trial_start_date ? new Date(p.trial_start_date) : new Date();
+  const daysLeft = trialDays - Math.floor((new Date() - trialStart) / (1000*60*60*24));
+  return daysLeft > 0 ? 'trial' : 'expired';
+}
+
 function updateAdminBadge(count) {
   const sidebar = document.getElementById('nav-admin');
   const bnav = document.getElementById('bnav-admin');
-  const badge = count > 0 ? `<span style="background:#ef4444;color:#fff;font-size:.6rem;font-weight:700;padding:.1rem .35rem;border-radius:10px;margin-left:.25rem">${count}</span>` : '';
-  if (sidebar) sidebar.querySelector('.admin-badge').outerHTML = `<span class="admin-badge">ADMIN</span>${badge}`;
+  if (sidebar) {
+    const badge = sidebar.querySelector('.admin-badge');
+    if (badge) badge.outerHTML = `<span class="admin-badge">ADMIN</span>${count > 0 ? `<span style="background:#ef4444;color:#fff;font-size:.6rem;font-weight:700;padding:.1rem .35rem;border-radius:10px;margin-left:.25rem">${count}</span>` : ''}`;
+  }
   if (bnav) {
     const existing = bnav.querySelector('.notif-dot');
     if (count > 0 && !existing) {
@@ -1222,6 +1290,7 @@ function updateAdminBadge(count) {
 async function renderAdminPanel() {
   if (currentUser.email !== ADMIN_EMAIL) return;
   document.getElementById('admin-price-input').value = appSettings.subscription_price || '30';
+  document.getElementById('admin-reminder-days').value = appSettings.expiry_reminder_days || '7';
 
   const { data: profiles, error } = await sb.from('profiles').select('*');
   if (error) { toast('Admin error: ' + error.message, 'error'); return; }
@@ -1230,71 +1299,260 @@ async function renderAdminPanel() {
     return;
   }
 
-  const trialDays = parseInt(appSettings.trial_days || '7');
   const now = new Date();
-  const oneDayAgo = new Date(now - 24 * 60 * 60 * 1000);
+  const reminderDays = parseInt(appSettings.expiry_reminder_days || '7');
+  const oneDayAgo = new Date(now - 24*60*60*1000);
 
-  const newUsers = profiles.filter(p => p.trial_start_date && new Date(p.trial_start_date) > oneDayAgo);
+  // Compute stats
+  const statuses = profiles.map(p => getUserStatus(p));
   const total = profiles.length;
-  const active = profiles.filter(p => p.subscription_status === 'active' && p.is_approved).length;
+  const active = statuses.filter(s => s === 'active').length;
+  const expiring = profiles.filter(p => {
+    if (!p.subscription_expiry_date) return false;
+    const exp = new Date(p.subscription_expiry_date);
+    const days = Math.ceil((exp - now) / (1000*60*60*24));
+    return days > 0 && days <= reminderDays;
+  }).length;
+  const newUsers = profiles.filter(p => p.trial_start_date && new Date(p.trial_start_date) > oneDayAgo);
+
   document.getElementById('admin-total-users').textContent = total;
   document.getElementById('admin-active-users').textContent = active;
+  document.getElementById('admin-expiring-users').textContent = expiring;
 
-  // Sort: newest first
-  profiles.sort((a, b) => new Date(b.trial_start_date || 0) - new Date(a.trial_start_date || 0));
+  // Filter chips
+  const counts = { all: total, active, trial: statuses.filter(s=>s==='trial').length,
+    expired: statuses.filter(s=>s==='expired').length, blocked: statuses.filter(s=>s==='blocked').length };
+  const filterLabels = { all:'All', active:'Active', trial:'Trial', expired:'Expired', blocked:'Blocked' };
+  document.getElementById('admin-filter-chips').innerHTML = Object.entries(filterLabels).map(([k,v]) =>
+    `<button class="exp-chip${adminFilter===k?' active':''}" onclick="setAdminFilter('${k}')">${v} (${counts[k]})</button>`
+  ).join('');
 
-  document.getElementById('admin-users-list').innerHTML = profiles.map(p => {
-    const trialStart = p.trial_start_date ? new Date(p.trial_start_date) : (p.created_at ? new Date(p.created_at) : new Date());
-    const daysLeft = trialDays - Math.floor((now - trialStart) / (1000 * 60 * 60 * 24));
-    const status = p.subscription_status || 'trial';
-    const isApproved = p.is_approved || false;
+  // Filter + sort
+  let filtered = profiles.filter((p,i) => adminFilter === 'all' || statuses[i] === adminFilter);
+  filtered.sort((a,b) => new Date(b.trial_start_date||0) - new Date(a.trial_start_date||0));
+
+  document.getElementById('admin-filter-count').textContent = `${filtered.length} user${filtered.length!==1?'s':''}`;
+
+  document.getElementById('admin-users-list').innerHTML = filtered.map(p => {
+    const st = getUserStatus(p);
     const isNew = p.trial_start_date && new Date(p.trial_start_date) > oneDayAgo;
+    const expiryDate = p.subscription_expiry_date ? new Date(p.subscription_expiry_date) : null;
+    const daysToExpiry = expiryDate ? Math.ceil((expiryDate - now) / (1000*60*60*24)) : null;
+    const trialStart = p.trial_start_date ? new Date(p.trial_start_date) : new Date();
+    const trialDays = parseInt(appSettings.trial_days || '7');
+    const trialLeft = trialDays - Math.floor((now - trialStart) / (1000*60*60*24));
+    const joinDate = (p.created_at||p.trial_start_date) ? new Date(p.created_at||p.trial_start_date).toLocaleDateString('en-MY') : '—';
 
-    let statusLabel = status;
-    let statusClass = `status-${status}`;
-    if (status === 'trial') {
-      statusLabel = daysLeft > 0 ? `Trial (${daysLeft}d left)` : 'Trial Expired';
-      statusClass = daysLeft > 0 ? 'status-trial' : 'status-expired';
-    } else if (status === 'active' && isApproved) {
-      statusLabel = 'Active'; statusClass = 'status-active';
-    } else if (status === 'blocked') {
-      statusLabel = 'Blocked'; statusClass = 'status-blocked';
+    const statusLabels = { active:'Active', trial:'Trial', expired:'Expired', blocked:'Blocked' };
+    const statusClasses = { active:'status-active', trial:'status-trial', expired:'status-expired', blocked:'status-blocked' };
+
+    let expiryInfo = '';
+    if (expiryDate) {
+      const fmt = expiryDate.toLocaleDateString('en-MY');
+      if (daysToExpiry > 0) expiryInfo = `Expires: ${fmt} (${daysToExpiry}d)`;
+      else expiryInfo = `Expired: ${fmt} (${Math.abs(daysToExpiry)}d ago)`;
+    } else if (st === 'trial') {
+      expiryInfo = `Trial: ${trialLeft}d remaining`;
     }
 
-    const email = p.email || '—';
-    const joinDate = (p.created_at || p.trial_start_date) ? new Date(p.created_at || p.trial_start_date).toLocaleDateString('en-MY') : 'Unknown';
-
-    return `<div class="admin-user-card${isNew ? ' admin-user-new' : ''}">
-      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.2rem">
-        <div class="user-name">${p.name || 'Unknown'}</div>
-        ${isNew ? '<span style="background:#7c3aed;color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .4rem;border-radius:4px">NEW</span>' : ''}
-      </div>
-      <div class="user-email">${email}</div>
-      <div class="user-meta">
-        Joined: ${joinDate}
-        &nbsp;·&nbsp; <span class="status-badge ${statusClass}">${statusLabel}</span>
-        ${isApproved ? ' &nbsp;·&nbsp; <span style="color:var(--teal);font-size:.75rem;font-weight:600">✓ Approved</span>' : ''}
-      </div>
-      <div class="admin-actions">
-        <button class="admin-btn approve" onclick="setUserStatus('${p.id}','active',true)">✓ Approve</button>
-        <button class="admin-btn trial" onclick="setUserStatus('${p.id}','trial',false)">↺ Reset Trial</button>
-        <button class="admin-btn block" onclick="setUserStatus('${p.id}','blocked',false)">✕ Block</button>
+    const isSelected = selectedUsers.has(p.id);
+    return `<div class="admin-user-card${isNew?' admin-user-new':''}${isSelected?' admin-user-selected':''}">
+      <div style="display:flex;align-items:flex-start;gap:.5rem">
+        <input type="checkbox" ${isSelected?'checked':''} onchange="toggleUserSelect('${p.id}',this.checked)"
+          style="width:16px;height:16px;accent-color:var(--teal);margin-top:.2rem;flex-shrink:0">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.2rem">
+            <div class="user-name">${p.name||'Unknown'}</div>
+            ${isNew?'<span style="background:#7c3aed;color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .4rem;border-radius:4px">NEW</span>':''}
+            <span class="status-badge ${statusClasses[st]}">${statusLabels[st]}</span>
+          </div>
+          <div class="user-email">${p.email||'—'}</div>
+          <div class="user-meta">Joined: ${joinDate}${expiryInfo?` &nbsp;·&nbsp; ${expiryInfo}`:''}</div>
+          <div class="admin-actions" style="margin-top:.5rem">
+            <button class="admin-btn approve" onclick="renewUser('${p.id}',1)">+1M</button>
+            <button class="admin-btn approve" onclick="renewUser('${p.id}',3)">+3M</button>
+            <button class="admin-btn approve" onclick="renewUser('${p.id}',6)">+6M</button>
+            <button class="admin-btn approve" onclick="renewUser('${p.id}',12)">+12M</button>
+            <button class="admin-btn approve" onclick="renewUserForever('${p.id}')">♾ Forever</button>
+          </div>
+          <div style="display:flex;gap:.5rem;margin-top:.375rem;align-items:center">
+            <input type="number" min="1" max="120" placeholder="N months" id="custom-months-${p.id}"
+              style="width:90px;padding:.3rem .5rem;border:1.5px solid var(--border);border-radius:8px;font-size:.8rem">
+            <button class="admin-btn approve" onclick="renewUserCustom('${p.id}')">+ Custom</button>
+            <button class="admin-btn trial" onclick="resetTrial('${p.id}')">↺ Trial</button>
+            <button class="admin-btn block" onclick="setUserStatus('${p.id}','blocked',false)">${st==='blocked'?'✓ Unblock':'✕ Block'}</button>
+          </div>
+        </div>
       </div>
     </div>`;
-  }).join('');
+  }).join('') || '<p style="color:var(--muted)">No users match filter.</p>';
 
   updateAdminBadge(newUsers.length);
+  updateBatchBar();
+}
+
+function setAdminFilter(f) {
+  adminFilter = f;
+  renderAdminPanel();
+}
+
+function toggleUserSelect(id, checked) {
+  if (checked) selectedUsers.add(id); else selectedUsers.delete(id);
+  updateBatchBar();
+  // Update select-all checkbox
+  const cards = document.querySelectorAll('#admin-users-list input[type=checkbox]');
+  document.getElementById('admin-select-all').checked = cards.length > 0 && [...cards].every(c => c.checked);
+}
+
+function toggleSelectAll() {
+  const checked = document.getElementById('admin-select-all').checked;
+  document.querySelectorAll('#admin-users-list input[type=checkbox]').forEach(cb => {
+    cb.checked = checked;
+    const id = cb.closest('.admin-user-card')?.querySelector('[onclick*="renewUser"]')?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+    if (id) { if (checked) selectedUsers.add(id); else selectedUsers.delete(id); }
+  });
+  updateBatchBar();
+}
+
+function updateBatchBar() {
+  const bar = document.getElementById('admin-batch-bar');
+  document.getElementById('admin-batch-count').textContent = selectedUsers.size;
+  bar.style.display = selectedUsers.size > 0 ? '' : 'none';
+}
+
+async function renewUser(userId, months) {
+  const { data: p } = await sb.from('profiles').select('subscription_expiry_date').eq('id', userId).single();
+  const base = p?.subscription_expiry_date && new Date(p.subscription_expiry_date) > new Date()
+    ? new Date(p.subscription_expiry_date) : new Date();
+  const newExpiry = new Date(base);
+  newExpiry.setMonth(newExpiry.getMonth() + months);
+  const { error } = await sb.from('profiles').update({
+    subscription_expiry_date: newExpiry.toISOString(),
+    subscription_status: 'active',
+    is_approved: true
+  }).eq('id', userId);
+  if (error) return toast(error.message, 'error');
+  toast(`Renewed +${months} month${months>1?'s':''}`, 'success');
+  renderAdminPanel();
+}
+
+async function renewUserCustom(userId) {
+  const input = document.getElementById(`custom-months-${userId}`);
+  const months = parseInt(input?.value);
+  if (!months || months < 1) return toast('Enter a valid number of months', 'error');
+  await renewUser(userId, months);
+}
+
+async function renewUserForever(userId) {
+  // Set expiry 100 years from now
+  const forever = new Date();
+  forever.setFullYear(forever.getFullYear() + 100);
+  const { error } = await sb.from('profiles').update({
+    subscription_expiry_date: forever.toISOString(),
+    subscription_status: 'active',
+    is_approved: true
+  }).eq('id', userId);
+  if (error) return toast(error.message, 'error');
+  toast('Set to active forever ♾', 'success');
+  renderAdminPanel();
+}
+
+async function resetTrial(userId) {
+  const { error } = await sb.from('profiles').update({
+    subscription_expiry_date: null,
+    subscription_status: 'trial',
+    is_approved: false,
+    trial_start_date: new Date().toISOString()
+  }).eq('id', userId);
+  if (error) return toast(error.message, 'error');
+  toast('Trial reset', 'success');
+  renderAdminPanel();
+}
+
+async function batchRenew(months) {
+  if (!selectedUsers.size) return;
+  const ids = [...selectedUsers];
+  const { data: profiles } = await sb.from('profiles').select('id,subscription_expiry_date').in('id', ids);
+  const updates = profiles.map(p => {
+    const base = p.subscription_expiry_date && new Date(p.subscription_expiry_date) > new Date()
+      ? new Date(p.subscription_expiry_date) : new Date();
+    const newExpiry = new Date(base);
+    newExpiry.setMonth(newExpiry.getMonth() + months);
+    return sb.from('profiles').update({
+      subscription_expiry_date: newExpiry.toISOString(),
+      subscription_status: 'active',
+      is_approved: true
+    }).eq('id', p.id);
+  });
+  await Promise.all(updates);
+  toast(`Renewed ${ids.length} users +${months} month${months>1?'s':''}`, 'success');
+  selectedUsers.clear();
+  renderAdminPanel();
+}
+
+async function batchRenewCustom() {
+  const months = parseInt(document.getElementById('admin-batch-months')?.value);
+  if (!months || months < 1) return toast('Enter a valid number of months', 'error');
+  await batchRenew(months);
+}
+
+async function batchRenewForever() {
+  if (!selectedUsers.size) return;
+  const forever = new Date();
+  forever.setFullYear(forever.getFullYear() + 100);
+  await sb.from('profiles').update({
+    subscription_expiry_date: forever.toISOString(),
+    subscription_status: 'active',
+    is_approved: true
+  }).in('id', [...selectedUsers]);
+  toast(`Set ${selectedUsers.size} users to forever ♾`, 'success');
+  selectedUsers.clear();
+  renderAdminPanel();
+}
+
+async function batchSetDate() {
+  const dateVal = document.getElementById('admin-batch-date').value;
+  if (!dateVal) return toast('Select a date first', 'error');
+  if (!selectedUsers.size) return;
+  const ids = [...selectedUsers];
+  await sb.from('profiles').update({
+    subscription_expiry_date: new Date(dateVal).toISOString(),
+    subscription_status: 'active',
+    is_approved: true
+  }).in('id', ids);
+  toast(`Set expiry for ${ids.length} users`, 'success');
+  selectedUsers.clear();
+  renderAdminPanel();
+}
+
+async function batchBlock() {
+  if (!selectedUsers.size) return;
+  const ids = [...selectedUsers];
+  await sb.from('profiles').update({ subscription_status: 'blocked', is_approved: false }).in('id', ids);
+  toast(`Blocked ${ids.length} users`, 'success');
+  selectedUsers.clear();
+  renderAdminPanel();
 }
 
 async function setUserStatus(userId, status, isApproved) {
-  const trialStartDate = status === 'trial' ? new Date().toISOString() : undefined;
   const update = { subscription_status: status, is_approved: isApproved };
-  if (trialStartDate) update.trial_start_date = trialStartDate;
+  if (status === 'blocked') update.is_approved = false;
+  if (status !== 'blocked') update.subscription_status = status;
   const { error } = await sb.from('profiles').update(update).eq('id', userId);
   if (error) return toast(error.message, 'error');
-  toast(`User ${status === 'active' ? 'approved' : status === 'blocked' ? 'blocked' : 'trial reset'}`, 'success');
+  toast(status === 'blocked' ? 'User blocked' : 'User updated', 'success');
   renderAdminPanel();
 }
+
+async function saveReminderDays() {
+  const days = document.getElementById('admin-reminder-days').value.trim();
+  if (!days) return toast('Enter days', 'error');
+  const { error } = await sb.from('app_settings').update({ value: days }).eq('key', 'expiry_reminder_days');
+  if (error) return toast(error.message, 'error');
+  appSettings.expiry_reminder_days = days;
+  toast(`Reminder set to ${days} days`, 'success');
+}
+
 
 async function saveSubscriptionPrice() {
   const price = document.getElementById('admin-price-input').value.trim();
@@ -1672,7 +1930,6 @@ async function deleteBusy(id) {
 }
 
 // ── EXPENSES ───────────────────────────────────────────────────────────────
-let expActiveCat = 'All';
 
 function renderExpCatChips() {
   const cats = ['All', ...new Set(expenses.map(e => e.type).filter(Boolean).sort())];
@@ -2246,6 +2503,28 @@ function toast(msg, type = '') {
 function emptyState(msg) {
   return `<div class="empty"><svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg><p>${msg}</p></div>`;
 }
+
+// ── STARTUP ────────────────────────────────────────────────────────────────
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (session?.user) {
+    if (!currentUser || currentUser.id !== session.user.id) {
+      await initApp(session.user);
+    }
+  } else {
+    currentUser = null;
+    userProfile = null;
+    showAuth();
+  }
+});
+
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user) {
+    await initApp(session.user);
+  } else {
+    showAuth();
+  }
+})();
 </script>
 </body>
 </html>
