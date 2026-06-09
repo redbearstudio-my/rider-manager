@@ -977,6 +977,33 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <div class="toast" id="toast"></div>
 
 <script>
+const SUPA_URL = 'https://gqavlaetwrvyugrqarcz.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxYXZsYWV0d3J2eXVncnFhcmN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNzA1NTcsImV4cCI6MjA5MTY0NjU1N30.QlEt3hevzpoEDy_RkCJsMW4Oyv9Jbp4-GuC_v-yUUXQ';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+const ADMIN_EMAIL = 'redbear.my@gmail.com';
+
+let appSettings = {};
+let isReadOnly = false;
+let currentUser = null, userProfile = null;
+let trips = [], expenses = [], busyTimes = [];
+let calDate = new Date(), calSelected = null;
+let tripTab = 'upcoming', reportPeriod = 'week';
+let expActiveCat = 'All';
+let adminFilter = 'all';
+let selectedUsers = new Set();
+
+function setReadOnly(val) {
+  isReadOnly = val;
+  document.body.classList.toggle('read-only-mode', val);
+  const fab = document.getElementById('fab-btn');
+  if (fab) fab.style.display = val ? 'none' : 'flex';
+}
+
+function guardReadOnly() {
+  if (isReadOnly) { toast('Subscribe to make changes', 'error'); return true; }
+  return false;
+}
+
 async function initApp(user) {
   currentUser = user;
   await loadProfile();
@@ -1223,8 +1250,6 @@ function navigate(page) {
 }
 
 // ── ADMIN PANEL ────────────────────────────────────────────────────────────
-let adminFilter = 'all';
-let selectedUsers = new Set();
 
 function getUserStatus(p) {
   if (p.subscription_status === 'blocked') return 'blocked';
@@ -1852,7 +1877,6 @@ async function deleteBusy(id) {
 }
 
 // ── EXPENSES ───────────────────────────────────────────────────────────────
-let expActiveCat = 'All';
 
 function renderExpCatChips() {
   const cats = ['All', ...new Set(expenses.map(e => e.type).filter(Boolean).sort())];
