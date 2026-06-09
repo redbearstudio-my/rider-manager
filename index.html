@@ -86,6 +86,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .admin-btn.trial:hover{background:#fef3c7}
 .admin-user-new{border-color:#7c3aed!important;background:#faf5ff!important}
 .admin-user-selected{border-color:var(--teal)!important;background:#f0fdfa!important}
+/* Billing */
+.billing-tabs{display:flex;gap:.5rem;background:var(--surface);border-radius:10px;padding:4px;margin-bottom:1.25rem}
+.billing-tab{flex:1;padding:.5rem;border:none;border-radius:8px;background:transparent;font-family:inherit;font-size:.875rem;font-weight:500;cursor:pointer;color:var(--muted);transition:all .15s}
+.billing-tab.active{background:#fff;color:var(--teal);font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.subs-table{width:100%;border-collapse:collapse;font-size:.85rem}
+.subs-table th{text-align:left;padding:.6rem .75rem;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--border);white-space:nowrap}
+.subs-table td{padding:.75rem;border-bottom:1px solid var(--border);vertical-align:middle}
+.subs-table tr:last-child td{border-bottom:none}
+.subs-table tr:hover td{background:var(--surface)}
+.pay-hist-card{background:#fff;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:.875rem 1rem;margin-bottom:.5rem}
+.pay-hist-card .ph-name{font-weight:700;font-size:.9rem}
+.pay-hist-card .ph-meta{font-size:.78rem;color:var(--muted);margin-top:.2rem}
+.pay-hist-amount{font-weight:700;color:var(--teal);font-size:1rem}
+.renew-btn{background:#7c3aed;color:#fff;border:none;padding:.4rem .9rem;border-radius:8px;font-size:.8rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:opacity .15s}
+.renew-btn:hover{opacity:.85}
 .read-only-mode .btn-save,
 .read-only-mode .btn-primary,
 .read-only-mode .loc-add-btn,
@@ -680,45 +695,78 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         </div>
       </div>
 
-      <!-- Filter tabs -->
-      <div class="exp-cat-chips" id="admin-filter-chips" style="margin-bottom:.75rem"></div>
+      <!-- Billing tabs -->
+      <div class="billing-tabs">
+        <button class="billing-tab active" id="billing-tab-subs" onclick="switchBillingTab('subs')">Subscriptions</button>
+        <button class="billing-tab" id="billing-tab-history" onclick="switchBillingTab('history')">Payment History</button>
+        <button class="billing-tab" id="billing-tab-users" onclick="switchBillingTab('users')">Users</button>
+      </div>
 
-      <!-- Batch action bar (shown when users selected) -->
-      <div id="admin-batch-bar" style="display:none;background:#f0f9ff;border:1.5px solid #7dd3fc;border-radius:var(--radius-sm);padding:.875rem 1rem;margin-bottom:1rem">
-        <div style="font-size:.85rem;font-weight:600;margin-bottom:.75rem">
-          <span id="admin-batch-count">0</span> user(s) selected
-        </div>
-        <div style="font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:.5rem">QUICK RENEW (extend from current expiry or today if none)</div>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem">
-          <button class="admin-btn approve" onclick="batchRenew(1)">+1 Month</button>
-          <button class="admin-btn approve" onclick="batchRenew(3)">+3 Months</button>
-          <button class="admin-btn approve" onclick="batchRenew(6)">+6 Months</button>
-          <button class="admin-btn approve" onclick="batchRenew(12)">+12 Months</button>
-          <button class="admin-btn approve" onclick="batchRenewForever()">♾ Forever</button>
-        </div>
-        <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.75rem">
-          <input type="number" min="1" max="120" placeholder="Custom months" id="admin-batch-months"
-            style="width:130px;padding:.4rem .6rem;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem">
-          <button class="admin-btn approve" onclick="batchRenewCustom()">+ Custom Months</button>
-        </div>
-        <div style="font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:.5rem">SET SPECIFIC EXPIRY DATE</div>
-        <div style="display:flex;gap:.5rem;align-items:center">
-          <input type="date" id="admin-batch-date" style="flex:1;padding:.5rem;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem">
-          <button class="admin-btn approve" onclick="batchSetDate()">Set Date</button>
-          <button class="admin-btn block" onclick="batchBlock()">Block All</button>
+      <!-- Subscriptions tab -->
+      <div id="billing-panel-subs">
+        <div style="overflow-x:auto">
+          <table class="subs-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Status</th>
+                <th>Expiry Date</th>
+                <th>Days Left</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="subs-table-body"></tbody>
+          </table>
         </div>
       </div>
 
-      <!-- Select all row -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
-        <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;font-weight:600;cursor:pointer">
-          <input type="checkbox" id="admin-select-all" onchange="toggleSelectAll()" style="width:16px;height:16px;accent-color:var(--teal)">
-          Select All
-        </label>
-        <div id="admin-filter-count" style="font-size:.78rem;color:var(--muted)"></div>
+      <!-- Payment History tab -->
+      <div id="billing-panel-history" style="display:none">
+        <div id="payment-history-list"></div>
       </div>
 
-      <div id="admin-users-list"></div>
+      <!-- Users tab -->
+      <div id="billing-panel-users" style="display:none">
+        <!-- Filter tabs -->
+        <div class="exp-cat-chips" id="admin-filter-chips" style="margin-bottom:.75rem"></div>
+
+        <!-- Batch action bar -->
+        <div id="admin-batch-bar" style="display:none;background:#f0f9ff;border:1.5px solid #7dd3fc;border-radius:var(--radius-sm);padding:.875rem 1rem;margin-bottom:1rem">
+          <div style="font-size:.85rem;font-weight:600;margin-bottom:.75rem">
+            <span id="admin-batch-count">0</span> user(s) selected
+          </div>
+          <div style="font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:.5rem">QUICK RENEW (extend from current expiry or today if none)</div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem">
+            <button class="admin-btn approve" onclick="batchRenew(1)">+1 Month</button>
+            <button class="admin-btn approve" onclick="batchRenew(3)">+3 Months</button>
+            <button class="admin-btn approve" onclick="batchRenew(6)">+6 Months</button>
+            <button class="admin-btn approve" onclick="batchRenew(12)">+12 Months</button>
+            <button class="admin-btn approve" onclick="batchRenewForever()">♾ Forever</button>
+          </div>
+          <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.75rem">
+            <input type="number" min="1" max="120" placeholder="Custom months" id="admin-batch-months"
+              style="width:130px;padding:.4rem .6rem;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem">
+            <button class="admin-btn approve" onclick="batchRenewCustom()">+ Custom Months</button>
+          </div>
+          <div style="font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:.5rem">SET SPECIFIC EXPIRY DATE</div>
+          <div style="display:flex;gap:.5rem;align-items:center">
+            <input type="date" id="admin-batch-date" style="flex:1;padding:.5rem;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem">
+            <button class="admin-btn approve" onclick="batchSetDate()">Set Date</button>
+            <button class="admin-btn block" onclick="batchBlock()">Block All</button>
+          </div>
+        </div>
+
+        <!-- Select all row -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+          <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;font-weight:600;cursor:pointer">
+            <input type="checkbox" id="admin-select-all" onchange="toggleSelectAll()" style="width:16px;height:16px;accent-color:var(--teal)">
+            Select All
+          </label>
+          <div id="admin-filter-count" style="font-size:.78rem;color:var(--muted)"></div>
+        </div>
+        <div id="admin-users-list"></div>
+      </div>
+    </div>      <div id="admin-users-list"></div>
     </div>
 
   </main>
@@ -980,6 +1028,47 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   </a>
   <button onclick="sb.auth.signOut()" style="margin-top:1rem;background:none;border:none;color:var(--muted);font-size:.8rem;cursor:pointer;text-decoration:underline">Sign out</button>
 </div>
+<!-- PAYMENT MODAL -->
+<div class="modal-overlay" id="payment-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <h2>Record Payment</h2>
+      <button class="modal-close" onclick="closeModal('payment-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="payment-user-info" style="background:var(--surface);border-radius:var(--radius-sm);padding:.75rem 1rem;margin-bottom:1rem;font-size:.875rem"></div>
+      <input type="hidden" id="payment-user-id">
+      <input type="hidden" id="payment-current-expiry">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Payment Date *</label>
+          <input type="date" id="payment-date">
+        </div>
+        <div class="form-group">
+          <label>Months *</label>
+          <input type="number" id="payment-months" min="1" max="120" placeholder="1" oninput="updateExpiryPreview()">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Amount (RM) *</label>
+        <input type="number" id="payment-amount" min="0" step="0.01" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label>Notes (Optional)</label>
+        <input type="text" id="payment-notes" placeholder="e.g. Bank transfer, cash">
+      </div>
+      <div id="payment-new-expiry" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:.625rem .875rem;font-size:.85rem;margin-top:.5rem;display:none">
+        <span style="color:#166534;font-weight:600">New expiry: </span>
+        <span id="payment-expiry-preview" style="color:#166534;font-weight:700"></span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('payment-modal')">Cancel</button>
+      <button class="btn-save" onclick="savePayment()">Save Payment</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1255,6 +1344,150 @@ function navigate(page) {
   }
 }
 
+// ── BILLING TABS ───────────────────────────────────────────────────────────
+let activeBillingTab = 'subs';
+
+function switchBillingTab(tab) {
+  activeBillingTab = tab;
+  ['subs','history','users'].forEach(t => {
+    document.getElementById(`billing-tab-${t}`).classList.toggle('active', t === tab);
+    document.getElementById(`billing-panel-${t}`).style.display = t === tab ? '' : 'none';
+  });
+  if (tab === 'subs') renderSubscriptionsTable();
+  if (tab === 'history') renderPaymentHistory();
+  if (tab === 'users') renderUsersTab();
+}
+
+async function renderSubscriptionsTable() {
+  const { data: profiles, error } = await sb.from('profiles').select('*');
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+
+  const now = new Date();
+  const sorted = [...(profiles||[])].sort((a,b) => {
+    const sa = getUserStatus(a), sb2 = getUserStatus(b);
+    const order = {active:0, trial:1, expired:2, blocked:3};
+    return (order[sa]??4) - (order[sb2]??4);
+  });
+
+  const statusClasses = {active:'status-active',trial:'status-trial',expired:'status-expired',blocked:'status-blocked'};
+  const statusLabels = {active:'Active',trial:'Trial',expired:'Expired',blocked:'Blocked'};
+
+  document.getElementById('subs-table-body').innerHTML = sorted.map(p => {
+    const st = getUserStatus(p);
+    const expiry = p.subscription_expiry_date ? new Date(p.subscription_expiry_date) : null;
+    const isForever = expiry && expiry.getFullYear() >= new Date().getFullYear() + 50;
+    const daysLeft = expiry && !isForever ? Math.ceil((expiry - now) / (1000*60*60*24)) : null;
+    const expiryStr = isForever ? '♾ Forever'
+      : expiry ? expiry.toLocaleDateString('en-MY', {day:'numeric',month:'short',year:'numeric'})
+      : '—';
+    const daysStr = isForever ? '—'
+      : daysLeft === null ? '—'
+      : daysLeft > 0 ? `${daysLeft}d`
+      : `${Math.abs(daysLeft)}d ago`;
+    const daysColor = !daysLeft || daysLeft > 7 ? '' : daysLeft > 0 ? 'color:#f59e0b;font-weight:700' : 'color:#ef4444;font-weight:700';
+
+    return `<tr>
+      <td>
+        <div style="font-weight:600;font-size:.875rem">${p.name||'Unknown'}</div>
+        <div style="font-size:.75rem;color:var(--muted)">${p.email||'—'}</div>
+      </td>
+      <td><span class="status-badge ${statusClasses[st]}">${statusLabels[st]}</span></td>
+      <td style="white-space:nowrap">${expiryStr}</td>
+      <td style="${daysColor};white-space:nowrap">${daysStr}</td>
+      <td><button class="renew-btn" onclick="openPaymentModal('${p.id}','${(p.name||'').replace(/'/g,"\\'")}','${p.email||''}','${p.subscription_expiry_date||''}')">Renew</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:2rem">No users found</td></tr>';
+}
+
+async function renderPaymentHistory(userId = null) {
+  let query = sb.from('subscription_payments').select('*, profiles!subscription_payments_user_id_fkey(name,email)').order('payment_date', {ascending: false});
+  if (userId) query = query.eq('user_id', userId);
+  const { data, error } = await query;
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+
+  const list = document.getElementById('payment-history-list');
+  if (!data?.length) { list.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem">No payment history yet</p>'; return; }
+
+  list.innerHTML = data.map(p => {
+    const d = new Date(p.payment_date).toLocaleDateString('en-MY', {day:'numeric',month:'short',year:'numeric'});
+    const name = p.profiles?.name || 'Unknown';
+    const email = p.profiles?.email || '';
+    return `<div class="pay-hist-card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between">
+        <div>
+          <div class="ph-name">${name}</div>
+          <div class="ph-meta">${email} &nbsp;·&nbsp; ${d} &nbsp;·&nbsp; ${p.months} month${p.months>1?'s':''}</div>
+          ${p.notes ? `<div class="ph-meta" style="margin-top:.2rem">📝 ${p.notes}</div>` : ''}
+        </div>
+        <div class="pay-hist-amount">RM ${parseFloat(p.amount).toFixed(2)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openPaymentModal(userId, name, email, currentExpiry) {
+  document.getElementById('payment-user-id').value = userId;
+  document.getElementById('payment-current-expiry').value = currentExpiry;
+  document.getElementById('payment-user-info').innerHTML =
+    `<strong>${name}</strong><br><span style="color:var(--muted)">${email}</span>`;
+  document.getElementById('payment-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('payment-months').value = '1';
+  document.getElementById('payment-amount').value = appSettings.subscription_price || '30';
+  document.getElementById('payment-notes').value = '';
+  updateExpiryPreview();
+  openModal('payment-modal');
+}
+
+function updateExpiryPreview() {
+  const months = parseInt(document.getElementById('payment-months').value) || 0;
+  const currentExpiry = document.getElementById('payment-current-expiry').value;
+  if (!months) { document.getElementById('payment-new-expiry').style.display = 'none'; return; }
+  const base = currentExpiry && new Date(currentExpiry) > new Date() ? new Date(currentExpiry) : new Date();
+  const newExpiry = new Date(base);
+  newExpiry.setMonth(newExpiry.getMonth() + months);
+  document.getElementById('payment-expiry-preview').textContent =
+    newExpiry.toLocaleDateString('en-MY', {day:'numeric', month:'long', year:'numeric'});
+  document.getElementById('payment-new-expiry').style.display = '';
+}
+
+async function savePayment() {
+  const userId = document.getElementById('payment-user-id').value;
+  const date = document.getElementById('payment-date').value;
+  const months = parseInt(document.getElementById('payment-months').value);
+  const amount = parseFloat(document.getElementById('payment-amount').value);
+  const notes = document.getElementById('payment-notes').value.trim();
+  const currentExpiry = document.getElementById('payment-current-expiry').value;
+
+  if (!date) return toast('Please select a payment date', 'error');
+  if (!months || months < 1) return toast('Please enter number of months', 'error');
+  if (isNaN(amount) || amount < 0) return toast('Please enter a valid amount', 'error');
+
+  // Record payment
+  const { error: payError } = await sb.from('subscription_payments').insert({
+    user_id: userId,
+    payment_date: date,
+    amount,
+    months,
+    notes: notes || null,
+    recorded_by: currentUser.id
+  });
+  if (payError) return toast('Error: ' + payError.message, 'error');
+
+  // Update expiry date on profile
+  const base = currentExpiry && new Date(currentExpiry) > new Date() ? new Date(currentExpiry) : new Date();
+  const newExpiry = new Date(base);
+  newExpiry.setMonth(newExpiry.getMonth() + months);
+  await sb.from('profiles').update({
+    subscription_expiry_date: newExpiry.toISOString(),
+    subscription_status: 'active',
+    is_approved: true
+  }).eq('id', userId);
+
+  toast(`Payment recorded · Expiry: ${newExpiry.toLocaleDateString('en-MY')}`, 'success');
+  closeModal('payment-modal');
+  renderSubscriptionsTable();
+}
+
 // ── ADMIN PANEL ────────────────────────────────────────────────────────────
 
 function getUserStatus(p) {
@@ -1291,6 +1524,13 @@ async function renderAdminPanel() {
   if (currentUser.email !== ADMIN_EMAIL) return;
   document.getElementById('admin-price-input').value = appSettings.subscription_price || '30';
   document.getElementById('admin-reminder-days').value = appSettings.expiry_reminder_days || '7';
+  // Default to subscriptions tab
+  if (activeBillingTab === 'subs') renderSubscriptionsTable();
+  else if (activeBillingTab === 'history') renderPaymentHistory();
+  else renderUsersTab();
+}
+
+async function renderUsersTab() {
 
   const { data: profiles, error } = await sb.from('profiles').select('*');
   if (error) { toast('Admin error: ' + error.message, 'error'); return; }
