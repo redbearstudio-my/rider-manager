@@ -2426,6 +2426,28 @@ function toast(msg, type = '') {
 function emptyState(msg) {
   return `<div class="empty"><svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg><p>${msg}</p></div>`;
 }
+
+// ── STARTUP ────────────────────────────────────────────────────────────────
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (session?.user) {
+    if (!currentUser || currentUser.id !== session.user.id) {
+      await initApp(session.user);
+    }
+  } else {
+    currentUser = null;
+    userProfile = null;
+    showAuth();
+  }
+});
+
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user) {
+    await initApp(session.user);
+  } else {
+    showAuth();
+  }
+})();
 </script>
 </body>
 </html>
