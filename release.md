@@ -2,6 +2,33 @@
 
 ---
 
+## v2.1 — 9 June 2026
+
+### 📅 Subscription Expiry Dates
+- Subscriptions now have explicit expiry dates (`subscription_expiry_date` column)
+- Status derived automatically: Active (future expiry) / Expired (past expiry) / Trial (no expiry set) / Blocked (manual override)
+- Warning banner shown N days before expiry (configurable in admin panel)
+
+### 🛠️ Admin Panel — Complete Overhaul
+- **Filter tabs**: All / Active / Trial / Expired / Blocked with user counts
+- **Stats row**: Total / Active / Expiring Soon
+- **Configurable reminder days** setting alongside price setting
+- **Per-user renew options**: +1M / +3M / +6M / +12M / ♾ Forever / Custom months input
+- **Checkboxes** for batch selection + Select All
+- **Batch action bar** (appears when users selected):
+  - Quick renew: +1M / +3M / +6M / +12M / ♾ Forever
+  - Custom months input
+  - Set specific expiry date for all selected
+  - Block all selected
+- Expiry date + days remaining/overdue shown per user card
+- Newest users sorted to top; NEW badge for users joined in last 24h
+
+### ♾ Active Forever
+- Setting a user to Forever sets expiry 100 years in the future
+- Available both per-user and in batch mode
+
+---
+
 ## v2.0 — 8 June 2026
 
 ### 👤 Admin Panel — Email Display
