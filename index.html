@@ -694,6 +694,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
           <button class="admin-btn approve" onclick="batchRenew(3)">+3 Months</button>
           <button class="admin-btn approve" onclick="batchRenew(6)">+6 Months</button>
           <button class="admin-btn approve" onclick="batchRenew(12)">+12 Months</button>
+          <button class="admin-btn approve" onclick="batchRenewForever()">♾ Forever</button>
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.75rem">
+          <input type="number" min="1" max="120" placeholder="Custom months" id="admin-batch-months"
+            style="width:130px;padding:.4rem .6rem;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem">
+          <button class="admin-btn approve" onclick="batchRenewCustom()">+ Custom Months</button>
         </div>
         <div style="font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:.5rem">SET SPECIFIC EXPIRY DATE</div>
         <div style="display:flex;gap:.5rem;align-items:center">
@@ -1367,6 +1373,12 @@ async function renderAdminPanel() {
             <button class="admin-btn approve" onclick="renewUser('${p.id}',3)">+3M</button>
             <button class="admin-btn approve" onclick="renewUser('${p.id}',6)">+6M</button>
             <button class="admin-btn approve" onclick="renewUser('${p.id}',12)">+12M</button>
+            <button class="admin-btn approve" onclick="renewUserForever('${p.id}')">♾ Forever</button>
+          </div>
+          <div style="display:flex;gap:.5rem;margin-top:.375rem;align-items:center">
+            <input type="number" min="1" max="120" placeholder="N months" id="custom-months-${p.id}"
+              style="width:90px;padding:.3rem .5rem;border:1.5px solid var(--border);border-radius:8px;font-size:.8rem">
+            <button class="admin-btn approve" onclick="renewUserCustom('${p.id}')">+ Custom</button>
             <button class="admin-btn trial" onclick="resetTrial('${p.id}')">↺ Trial</button>
             <button class="admin-btn block" onclick="setUserStatus('${p.id}','blocked',false)">${st==='blocked'?'✓ Unblock':'✕ Block'}</button>
           </div>
@@ -1424,6 +1436,27 @@ async function renewUser(userId, months) {
   renderAdminPanel();
 }
 
+async function renewUserCustom(userId) {
+  const input = document.getElementById(`custom-months-${userId}`);
+  const months = parseInt(input?.value);
+  if (!months || months < 1) return toast('Enter a valid number of months', 'error');
+  await renewUser(userId, months);
+}
+
+async function renewUserForever(userId) {
+  // Set expiry 100 years from now
+  const forever = new Date();
+  forever.setFullYear(forever.getFullYear() + 100);
+  const { error } = await sb.from('profiles').update({
+    subscription_expiry_date: forever.toISOString(),
+    subscription_status: 'active',
+    is_approved: true
+  }).eq('id', userId);
+  if (error) return toast(error.message, 'error');
+  toast('Set to active forever ♾', 'success');
+  renderAdminPanel();
+}
+
 async function resetTrial(userId) {
   const { error } = await sb.from('profiles').update({
     subscription_expiry_date: null,
@@ -1453,6 +1486,26 @@ async function batchRenew(months) {
   });
   await Promise.all(updates);
   toast(`Renewed ${ids.length} users +${months} month${months>1?'s':''}`, 'success');
+  selectedUsers.clear();
+  renderAdminPanel();
+}
+
+async function batchRenewCustom() {
+  const months = parseInt(document.getElementById('admin-batch-months')?.value);
+  if (!months || months < 1) return toast('Enter a valid number of months', 'error');
+  await batchRenew(months);
+}
+
+async function batchRenewForever() {
+  if (!selectedUsers.size) return;
+  const forever = new Date();
+  forever.setFullYear(forever.getFullYear() + 100);
+  await sb.from('profiles').update({
+    subscription_expiry_date: forever.toISOString(),
+    subscription_status: 'active',
+    is_approved: true
+  }).in('id', [...selectedUsers]);
+  toast(`Set ${selectedUsers.size} users to forever ♾`, 'success');
   selectedUsers.clear();
   renderAdminPanel();
 }
