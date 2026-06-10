@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="version" content="1.2">
 <meta name="release-date" content="2026-06-05">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Rider Manager v1.2</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -17,7 +17,7 @@
   --text:#0f172a;--muted:#64748b;--danger:#ef4444;--success:#22c55e;--warning:#f59e0b;
   --radius:12px;--radius-sm:8px;
 }
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:16px}
 
 /* AUTH */
 .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0c4a6e 0%,#0e7490 50%,#0f766e 100%);padding:1rem}
@@ -333,18 +333,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .loading-page .spinner{border-color:rgba(14,116,144,.3);border-top-color:var(--teal);width:36px;height:36px}
 
 /* MOBILE */
-.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);padding:.5rem 0 .75rem;z-index:100;grid-template-columns:repeat(6,1fr)}
-.bnav{display:flex;flex-direction:column;align-items:center;gap:.2rem;padding:.4rem .25rem;color:var(--muted);cursor:pointer;font-size:.65rem;font-weight:500;transition:color .2s}
+.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);padding:.5rem 0 env(safe-area-inset-bottom,.5rem);z-index:100;grid-template-columns:repeat(6,1fr)}
+.bnav{display:flex;flex-direction:column;align-items:center;gap:.25rem;padding:.4rem .1rem;color:var(--muted);cursor:pointer;font-size:.72rem;font-weight:600;transition:color .2s;min-width:0;min-height:48px;justify-content:center}
 .bnav.active{color:var(--teal)}
-.bnav svg{width:22px;height:22px}
+.bnav svg{width:26px;height:26px;flex-shrink:0}
 
 @media(max-width:768px){
   .sidebar{display:none}
-  .main-content{margin-left:0;padding:1rem;padding-bottom:5rem}
+  .main-content{margin-left:0;padding:1rem;padding-bottom:7.5rem}
   .trial-banner{margin:-1rem -1rem 1rem -1rem;width:calc(100% + 2rem)}
   .bottom-nav{display:grid}
   .form-row{grid-template-columns:1fr}
-  .fab{bottom:5.5rem}
+  .fab{bottom:6rem;right:1rem}
   .stats-row{grid-template-columns:1fr 1fr}
 }
 </style>
@@ -462,9 +462,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="bnav" onclick="navigate('report')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Report
     </div>
-    <div class="bnav" id="bnav-subscription" style="display:none" onclick="navigate('subscription')">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-      Subs
+    <div class="bnav" id="bnav-admin" style="display:none" onclick="navigate('admin')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      Admin
     </div>
     <div class="bnav" onclick="navigate('settings')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06-.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings
@@ -510,9 +510,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
     <!-- TRIPS PAGE -->
     <div id="page-trips" class="page">
-      <div class="page-header">
-        <h1>Trips</h1>
-        <p>Manage all your trips</p>
+      <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+        <div>
+          <h1>Trips</h1>
+          <p>Manage all your trips</p>
+        </div>
+        <button class="btn-save" id="trips-add-btn" onclick="openTripModal()" style="display:none;padding:.6rem 1.1rem;font-size:.875rem;white-space:nowrap">
+          + New Trip
+        </button>
       </div>
       <div class="search-bar">
         <input class="search-input" type="text" id="trip-search" placeholder="Search by name, location, contact..." oninput="renderTrips()">
@@ -665,6 +670,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
           <div class="stg-row-left">
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             Personal Information
+          </div>
+          <svg class="stg-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="stg-row" id="stg-subscription-row" style="display:none" onclick="navigate('subscription')">
+          <div class="stg-row-left">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            Subscription
           </div>
           <svg class="stg-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
         </div>
@@ -1074,13 +1086,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <input type="checkbox" id="exp-modal-group-by-cat" style="width:18px;height:18px;accent-color:var(--teal);flex-shrink:0">
         <div>
           <div>Group by Category</div>
-          <div style="font-size:.75rem;color:var(--muted);margin-top:.1rem">Creates separate sheets per category (Petrol, Toll, etc.)</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-top:.1rem">Rows sorted by category, then by date</div>
         </div>
       </label>
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal('export-expense-modal')">Cancel</button>
-      <button class="btn-save" onclick="doExportExpenses()">Export Excel</button>
+      <button class="btn-save" style="background:#166534;border-color:#166534" onclick="doExportExpenses('excel')">📊 Excel</button>
+      <button class="btn-save" style="background:#dc2626;border-color:#dc2626" onclick="doExportExpenses('pdf')">📄 PDF</button>
     </div>
   </div>
 </div>
@@ -1267,6 +1280,8 @@ function setReadOnly(val) {
   document.body.classList.toggle('read-only-mode', val);
   const fab = document.getElementById('fab-btn');
   if (fab) fab.style.display = val ? 'none' : 'flex';
+  const tripsBtn = document.getElementById('trips-add-btn');
+  if (tripsBtn) tripsBtn.style.display = val ? 'none' : 'flex';
 }
 
 function guardReadOnly() {
@@ -1309,7 +1324,8 @@ async function initApp(user) {
     if (newUsers?.length) updateAdminBadge(newUsers.length);
   } else {
     document.getElementById('nav-subscription').style.display = 'flex';
-    document.getElementById('bnav-subscription').style.display = 'flex';
+    const subRow = document.getElementById('stg-subscription-row');
+    if (subRow) subRow.style.display = 'flex';
   }
 }
 
@@ -1477,6 +1493,8 @@ function showApp() {
   document.getElementById('main-app').style.display = 'flex';
   // Only show FAB if not in read-only mode
   document.getElementById('fab-btn').style.display = isReadOnly ? 'none' : 'flex';
+  const tripsBtn = document.getElementById('trips-add-btn');
+  if (tripsBtn) tripsBtn.style.display = isReadOnly ? 'none' : 'flex';
   document.getElementById('home-date').textContent = new Date().toLocaleDateString('en-MY', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
 }
 function showView(v) {
@@ -2241,7 +2259,6 @@ function tripCard(t) {
           </a>` : ''}
         </div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:.3rem;align-items:flex-end">${payBadge}${statusBadge}</div>
     </div>
     <div class="trip-locations">
       <div>
@@ -2265,6 +2282,7 @@ function tripCard(t) {
     ${t.notes ? `<div style="font-size:.85rem;color:var(--muted);margin-top:.375rem">📝 ${t.notes}</div>` : ''}
     ${t.cancellation_reason ? `<div style="font-size:.8rem;color:var(--danger);margin-top:.375rem">Reason: ${t.cancellation_reason}</div>` : ''}
     <div class="trip-actions">${actions}</div>
+    <div style="display:flex;gap:.4rem;margin-top:.5rem">${payBadge}${statusBadge}</div>
   </div>`;
 }
 
@@ -2792,7 +2810,7 @@ function getExportDateRange(prefix) {
   }
 }
 
-function doExportExpenses() {
+function doExportExpenses(format = 'excel') {
   // Determine date range from modal
   const activeTab = ['all','month','range'].find(t =>
     document.getElementById(`exp-modal-tab-${t}`).classList.contains('active')
@@ -2832,9 +2850,28 @@ function doExportExpenses() {
     : activeTab === 'month' ? document.getElementById('exp-modal-month-val').value
     : `${fmt(document.getElementById('exp-modal-from').value)} - ${fmt(document.getElementById('exp-modal-to').value)}`;
 
-  const wb = XLSX.utils.book_new();
-  const typeIcon = { Petrol:'⛽', Toll:'🛣️', Meal:'🍽️', Maintenance:'🔧', Others:'📦' };
+  // Sort rows
+  let sortedRows;
+  if (groupByCat) {
+    const cats = [...new Set(filtered.map(e => e.type))].sort();
+    sortedRows = cats.flatMap(cat =>
+      filtered.filter(e => e.type === cat).sort((a,b) => new Date(a.date) - new Date(b.date))
+    );
+  } else {
+    sortedRows = [...filtered].sort((a,b) => new Date(a.date) - new Date(b.date));
+  }
 
+  if (format === 'pdf') {
+    exportExpensesPDF(sortedRows, userName, rangeLabel, groupByCat, fileLabel);
+  } else {
+    exportExpensesExcel(sortedRows, userName, rangeLabel, fileLabel);
+  }
+
+  closeModal('export-expense-modal');
+  toast('Expense data exported', 'success');
+}
+
+function exportExpensesExcel(rows, userName, rangeLabel, fileLabel) {
   const makeSheet = (rows, label) => {
     const ws = XLSX.utils.aoa_to_sheet([
       [userName], ['Expenses Report'], [label], [],
@@ -2847,21 +2884,57 @@ function doExportExpenses() {
     ws['!cols'] = [12,15,14,25,30].map(w => ({ wch: w }));
     return ws;
   };
-
-  if (groupByCat) {
-    // Single sheet, grouped by category, sorted by date ascending within each category
-    const cats = [...new Set(filtered.map(e => e.type))].sort();
-    const sortedRows = cats.flatMap(cat =>
-      filtered.filter(e => e.type === cat).sort((a,b) => new Date(a.date) - new Date(b.date))
-    );
-    XLSX.utils.book_append_sheet(wb, makeSheet(sortedRows, rangeLabel), 'Expenses');
-  } else {
-    XLSX.utils.book_append_sheet(wb, makeSheet(filtered, rangeLabel), 'Expenses');
-  }
-
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, makeSheet(rows, rangeLabel), 'Expenses');
   XLSX.writeFile(wb, `${userName}_expenses_${fileLabel}.xlsx`);
-  closeModal('export-expense-modal');
-  toast(`Exported ${filtered.length} expenses to Excel`, 'success');
+}
+
+function exportExpensesPDF(rows, userName, rangeLabel, groupByCat, fileLabel) {
+  const total = rows.reduce((s,e) => s + parseFloat(e.amount||0), 0);
+  const typeIcon = { Petrol:'⛽', Toll:'🛣️', Meal:'🍽️', Maintenance:'🔧', Others:'📦' };
+
+  // Build table rows HTML
+  let tableRows = '';
+  let lastCat = null;
+  rows.forEach(e => {
+    if (groupByCat && e.type !== lastCat) {
+      lastCat = e.type;
+      tableRows += `<tr style="background:#f0fdf4"><td colspan="4" style="padding:.5rem .75rem;font-weight:700;color:#065f46">${typeIcon[e.type]||''} ${e.type}</td></tr>`;
+    }
+    tableRows += `<tr>
+      <td>${e.date}</td>
+      <td>${e.type}</td>
+      <td style="text-align:right">RM ${parseFloat(e.amount||0).toFixed(2)}</td>
+      <td style="color:#6b7280">${e.notes||e.location||''}</td>
+    </tr>`;
+  });
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>Expenses Report</title>
+    <style>
+      body{font-family:sans-serif;padding:2rem;color:#1f2937;max-width:800px;margin:0 auto}
+      h1{color:#0e7490;margin-bottom:.25rem}
+      .subtitle{color:#6b7280;margin-bottom:1.5rem;font-size:.9rem}
+      table{width:100%;border-collapse:collapse;margin-top:1rem}
+      th{background:#0e7490;color:#fff;padding:.6rem .75rem;text-align:left;font-size:.85rem}
+      td{padding:.5rem .75rem;border-bottom:1px solid #e5e7eb;font-size:.85rem}
+      .total-row{font-weight:700;background:#f9fafb}
+      .total-row td{border-top:2px solid #0e7490;padding:.75rem}
+    </style></head><body>
+    <h1>Expenses Report</h1>
+    <div class="subtitle">${userName} &nbsp;·&nbsp; ${rangeLabel}</div>
+    <table>
+      <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Notes</th></tr></thead>
+      <tbody>${tableRows}
+        <tr class="total-row"><td colspan="2">Total</td><td style="text-align:right">RM ${total.toFixed(2)}</td><td></td></tr>
+      </tbody>
+    </table>
+    <script>window.onload=()=>{window.print()}<\/script>
+    </body></html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
 }
 
 function doExportTrips() {
