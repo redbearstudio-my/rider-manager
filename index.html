@@ -630,6 +630,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="settings-section">
         <h3>Your Profile</h3>
         <div class="form-group"><label>Display Name</label><input type="text" id="settings-name" placeholder="Your name"></div>
+        <div class="form-group">
+          <label>WhatsApp / Phone Number</label>
+          <input type="tel" id="settings-phone" placeholder="e.g. 60123456789">
+          <div style="font-size:.75rem;color:var(--muted);margin-top:.25rem">Used for subscription reminders. Include country code e.g. 601X-XXXXXXX</div>
+        </div>
         <button class="btn-save" onclick="saveSettings()">Save Settings</button>
       </div>
 
@@ -1259,6 +1264,9 @@ async function loadProfile() {
   document.getElementById('sb-avatar').textContent = name[0].toUpperCase();
   document.getElementById('home-greeting').textContent = `Hello, ${name}!`;
   document.getElementById('settings-name').value = name;
+  if (document.getElementById('settings-phone')) {
+    document.getElementById('settings-phone').value = userProfile?.phone || '';
+  }
 }
 
 async function loadAll() {
@@ -1478,7 +1486,7 @@ async function renderSubscriptionsTable() {
     return `<tr>
       <td>
         <div style="font-weight:600;font-size:.875rem">${p.name||'Unknown'}</div>
-        <div style="font-size:.75rem;color:var(--muted)">${p.email||'—'}</div>
+        <div style="font-size:.75rem;color:var(--muted)">${p.email||'—'}${p.phone ? ` · 📱 ${p.phone}` : ''}</div>
       </td>
       <td><span class="status-badge ${statusClasses[st]}">${statusLabels[st]}</span></td>
       <td style="white-space:nowrap">${expiryStr}</td>
@@ -1731,7 +1739,7 @@ async function renderUsersTab() {
             ${isNew?'<span style="background:#7c3aed;color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .4rem;border-radius:4px">NEW</span>':''}
             <span class="status-badge ${statusClasses[st]}">${statusLabels[st]}</span>
           </div>
-          <div class="user-email">${p.email||'—'}</div>
+          <div class="user-email">${p.email||'—'}${p.phone ? ` &nbsp;·&nbsp; 📱 ${p.phone}` : ''}</div>
           <div class="user-meta">Joined: ${joinDate}${expiryInfo?` &nbsp;·&nbsp; ${expiryInfo}`:''}</div>
           <div class="admin-actions" style="margin-top:.5rem">
             <button class="admin-btn approve" onclick="renewUser('${p.id}',1)">+1M</button>
@@ -2482,8 +2490,9 @@ function renderReport() {
 // ── SETTINGS ───────────────────────────────────────────────────────────────
 async function saveSettings() {
   const name = document.getElementById('settings-name').value.trim();
+  const phone = document.getElementById('settings-phone').value.trim();
   if (!name) return toast('Please enter your name','error');
-  const { error } = await sb.from('profiles').upsert({ id: currentUser.id, name, updated_at: new Date().toISOString() });
+  const { error } = await sb.from('profiles').upsert({ id: currentUser.id, name, phone: phone||null, updated_at: new Date().toISOString() });
   if (error) return toast(error.message,'error');
   await loadProfile();
   toast('Settings saved','success');
