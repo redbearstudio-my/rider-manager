@@ -2,6 +2,23 @@
 
 ---
 
+## v2.5 — 10 June 2026
+
+### 🎉 New User Onboarding Modal
+- First-time users see a 2-step onboarding modal on login (cannot be dismissed)
+- **Step 1** — Enter name (pre-filled from Google account) + WhatsApp number
+- **Step 2** — Welcome screen showing:
+  - ✅ 7-day free trial with full access
+  - Subscription price after trial (RM 30/month, pulled from admin settings)
+  - "🚀 Start Free Trial" button to begin
+- Existing users are not affected (`onboarded = true` flag)
+- Saves name, phone, and `onboarded = true` to profiles on completion
+
+### 🗄️ Supabase Changes
+- `profiles.onboarded` boolean column — tracks if user has completed onboarding
+
+---
+
 ## v2.4 — 10 June 2026
 
 ### 📱 Phone Number in Settings
