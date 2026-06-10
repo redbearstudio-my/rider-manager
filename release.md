@@ -2,6 +2,21 @@
 
 ---
 
+## v2.3 — 10 June 2026
+
+### 📋 User Subscription Section in Settings
+- Regular users now see a **Subscription** section in their Settings page
+- Shows current status badge (Active / Trial / Expired / Blocked)
+- Shows expiry date + days remaining or days overdue
+- Shows full payment history: date, months, amount, notes
+- Hidden for admin account
+
+### 🎨 Admin Panel UI Improvements
+- **Billing tabs** (Subscriptions / Payment History / Users) redesigned as clear button-style tabs — outlined when inactive, solid teal when active
+- **Action buttons** in Subscriptions table now have clear hierarchy: 💰 Renew (purple, primary) / ♾ Forever (green) / Expire (outlined grey, secondary)
+
+---
+
 ## v2.2 — 9 June 2026
 
 ### 💳 Billing Tabs in Admin Panel
