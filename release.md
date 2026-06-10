@@ -2,6 +2,44 @@
 
 ---
 
+## v2.2 — 9 June 2026
+
+### 💳 Billing Tabs in Admin Panel
+Admin panel now has 3 tabs: **Subscriptions / Payment History / Users**
+
+**Subscriptions tab** (default)
+- Table view: Name, Email, Status badge, Expiry Date, Days Left
+- 3 action buttons per row: **Renew** / **♾ Forever** / **Expire**
+- Sorted: Active → Trial → Expired → Blocked
+- Forever shows ♾, days overdue shown in red
+
+**Payment History tab**
+- All payments across all users, newest first
+- Shows: name, email, payment date, months, amount, notes
+
+**Users tab**
+- Existing user management with batch actions
+- Added **⏱ Expire** button per user card
+
+### 💰 Record Payment Modal
+- Opens on Renew — fields: Payment Date, Months, Amount (RM), Notes
+- Live preview of new expiry date as months are typed
+- **Custom date toggle** — override calculated expiry with a specific calendar date
+
+### ♾ Mark Active Forever
+- Sets expiry 100 years in the future
+- Available in Subscriptions table and Users tab
+
+### ⏱ Mark as Expired
+- Sets expiry to yesterday for easy testing of expired state
+- Available in Subscriptions table and Users tab
+
+### 🔧 Startup Fix
+- Fixed double `initApp` call on page load (was causing infinite loading)
+- Added 8-second timeout fallback — if Supabase doesn't respond, shows auth screen
+
+---
+
 ## v2.1 — 9 June 2026
 
 ### 📅 Subscription Expiry Dates
