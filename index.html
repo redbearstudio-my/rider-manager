@@ -1091,6 +1091,61 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
+<!-- ONBOARDING MODAL -->
+<div class="modal-overlay" id="onboarding-modal" style="z-index:2000">
+  <div class="modal" style="max-width:420px">
+
+    <!-- Step 1: Profile -->
+    <div id="onboard-step-1">
+      <div style="text-align:center;padding:.5rem 0 1rem">
+        <div style="font-size:2.5rem;margin-bottom:.75rem">👋</div>
+        <h2 style="font-size:1.35rem;margin-bottom:.375rem">Welcome to Rider Manager!</h2>
+        <p style="color:var(--muted);font-size:.9rem">Let's set up your account quickly.</p>
+      </div>
+      <div class="modal-body" style="padding-top:0">
+        <div class="form-group">
+          <label>Your Name *</label>
+          <input type="text" id="onboard-name" placeholder="e.g. Ahmad Razif" autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label>WhatsApp Number</label>
+          <input type="tel" id="onboard-phone" placeholder="e.g. 60123456789">
+          <div style="font-size:.75rem;color:var(--muted);margin-top:.25rem">For subscription renewal reminders</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-save" style="width:100%" onclick="onboardNext()">Continue →</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Trial info -->
+    <div id="onboard-step-2" style="display:none">
+      <div style="text-align:center;padding:.5rem 0 1rem">
+        <div style="font-size:2.5rem;margin-bottom:.75rem">🎉</div>
+        <h2 style="font-size:1.35rem;margin-bottom:.375rem">You're all set, <span id="onboard-welcome-name"></span>!</h2>
+        <p style="color:var(--muted);font-size:.9rem">Here's what you get:</p>
+      </div>
+      <div class="modal-body" style="padding-top:0">
+        <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:var(--radius-sm);padding:1rem;margin-bottom:.75rem">
+          <div style="font-weight:700;color:#166534;font-size:1rem;margin-bottom:.25rem">✅ 7-Day Free Trial</div>
+          <div style="font-size:.85rem;color:#166534">Full access to all features, no payment required.</div>
+        </div>
+        <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:1rem;margin-bottom:.75rem">
+          <div style="font-size:.8rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem">After trial</div>
+          <div style="font-size:1.5rem;font-weight:800;color:var(--text)">RM <span id="onboard-price">30</span><span style="font-size:.9rem;font-weight:500;color:var(--muted)">/month</span></div>
+        </div>
+        <div style="font-size:.82rem;color:var(--muted);text-align:center">
+          Contact your admin to subscribe when your trial ends.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-save" style="width:100%;background:#059669" onclick="onboardFinish()">🚀 Start Free Trial</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1125,6 +1180,19 @@ async function initApp(user) {
   currentUser = user;
   await loadProfile();
   await loadAppSettings();
+
+  // Show onboarding for brand new users (name not yet customised)
+  const defaultName = user.user_metadata?.full_name || user.email?.split('@')[0] || '';
+  const isNewUser = !userProfile?.onboarded &&
+    (!userProfile?.name || userProfile.name === defaultName);
+
+  if (isNewUser && user.email !== ADMIN_EMAIL) {
+    showApp();
+    try { await loadAll(); } catch(e) {}
+    showOnboarding();
+    return;
+  }
+
   let access = true;
   try {
     access = await checkSubscriptionAccess();
@@ -1137,7 +1205,6 @@ async function initApp(user) {
   if (currentUser.email === ADMIN_EMAIL) {
     document.getElementById('nav-admin').style.display = 'flex';
     document.getElementById('bnav-admin').style.display = 'flex';
-    // Check for new users and show badge
     const { data: newUsers } = await sb.from('profiles')
       .select('id')
       .gt('trial_start_date', new Date(Date.now() - 24*60*60*1000).toISOString());
@@ -1368,6 +1435,54 @@ function navigate(page) {
     fab.title = 'New Trip';
     fab.onclick = () => openTripModal();
   }
+}
+
+// ── ONBOARDING ─────────────────────────────────────────────────────────────
+function showOnboarding() {
+  document.getElementById('onboard-price').textContent = appSettings.subscription_price || '30';
+  const trialDays = appSettings.trial_days || '7';
+  document.querySelector('#onboard-step-1 ~ * #onboard-step-1, #onboard-step-2');
+  document.getElementById('onboard-step-1').style.display = '';
+  document.getElementById('onboard-step-2').style.display = 'none';
+  // Pre-fill name if available
+  const defaultName = currentUser.user_metadata?.full_name || '';
+  if (defaultName) document.getElementById('onboard-name').value = defaultName;
+  document.getElementById('onboarding-modal').classList.add('open');
+}
+
+async function onboardNext() {
+  const name = document.getElementById('onboard-name').value.trim();
+  if (!name) { toast('Please enter your name', 'error'); return; }
+  // Save name and phone
+  const phone = document.getElementById('onboard-phone').value.trim();
+  const { error } = await sb.from('profiles').update({
+    name,
+    phone: phone || null,
+    onboarded: true,
+    updated_at: new Date().toISOString()
+  }).eq('id', currentUser.id);
+  if (error) return toast(error.message, 'error');
+  // Update local profile
+  userProfile = { ...userProfile, name, phone, onboarded: true };
+  document.getElementById('sb-name').textContent = name;
+  document.getElementById('sb-avatar').textContent = name[0].toUpperCase();
+  document.getElementById('home-greeting').textContent = `Hello, ${name}!`;
+  document.getElementById('settings-name').value = name;
+  if (document.getElementById('settings-phone')) document.getElementById('settings-phone').value = phone || '';
+  // Show step 2
+  document.getElementById('onboard-price').textContent = appSettings.subscription_price || '30';
+  document.getElementById('onboard-welcome-name').textContent = name.split(' ')[0];
+  document.getElementById('onboard-step-1').style.display = 'none';
+  document.getElementById('onboard-step-2').style.display = '';
+}
+
+async function onboardFinish() {
+  document.getElementById('onboarding-modal').classList.remove('open');
+  // Now run subscription check normally
+  let access = true;
+  try { access = await checkSubscriptionAccess(); } catch(e) {}
+  if (!access) return;
+  // Show trial banner if applicable
 }
 
 // ── SETTINGS SUBSCRIPTION ──────────────────────────────────────────────────
