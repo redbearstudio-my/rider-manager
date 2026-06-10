@@ -2,6 +2,34 @@
 
 ---
 
+## v2.7 — 10 June 2026
+
+### 📊 Expense Export — Date Selection & Group by Category
+- Export modal now has 3 tabs: **All** / **By Month** / **Date Range**
+- **By Month** — month picker, defaults to current month
+- **Date Range** — From / To date pickers
+- **Group by Category** checkbox — single sheet with rows sorted by category (A-Z) then date ascending
+- Accessible from both the Expenses page filter bar and Settings → Data
+
+---
+
+## v2.6 — 10 June 2026
+
+### ⚙️ Settings Page Redesign
+- New list-style layout inspired by banking/Grab apps
+- **Profile header** at top — avatar circle, name, email
+- **Account** section — "Personal Information" row opens a modal to edit name + phone
+- **Data** section — Export Trips, Export Expenses, Import Trips as tappable rows
+- **Support** section — About with version number inline
+- **Log Out** button at bottom in clean red text style
+
+### 💳 Subscription as Separate Nav Item (users only)
+- New **Subscription** (Subs) nav item in sidebar and bottom nav — hidden for admin
+- Shows status badge, expiry date, days remaining, payment history
+- Admin sees Admin tab instead
+
+---
+
 ## v2.5 — 10 June 2026
 
 ### 🎉 New User Onboarding Modal
