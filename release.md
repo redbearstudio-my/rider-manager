@@ -2,6 +2,34 @@
 
 ---
 
+## v2.4 — 10 June 2026
+
+### 📱 Phone Number in Settings
+- Users can now enter their WhatsApp/phone number in Settings page
+- Stored in `profiles.phone` column
+- Shown in admin panel (Users tab) and Subscriptions table alongside email
+
+### 📧 Automated Email Reminders (Supabase pg_cron)
+- Daily cron job runs at 9am MYT (1am UTC)
+- Sends expiry reminder emails via Resend (`no-reply@redbearstudio.my`)
+- Smart send schedule — sends on day N, day 3, and day 1 before expiry:
+  - Reminder days = 7 → sends on day 7, day 3, day 1
+  - Reminder days = 5 → sends on day 5, day 3, day 1
+  - Reminder days = 3 → sends on day 3, day 1
+- Deduplication via `reminder_sent_dates` jsonb column — never sends same reminder twice
+- Auto-clears `reminder_sent_dates` when user renews (trigger on profiles table)
+- Email includes green **💬 WhatsApp to Renew** button with pre-filled message: *"Hi admin, I want to renew my subscription, my email is xxx, my name is xxx"*
+
+### 🗄️ Supabase Changes
+- `profiles.phone` — user's WhatsApp/phone number
+- `profiles.reminder_sent_dates` — tracks which reminders sent per expiry cycle
+- `send_expiry_reminders()` — PL/pgSQL function called by cron
+- `clear_reminder_on_renew()` — trigger that resets reminder tracking on renewal
+- `pg_cron` + `http` extensions enabled
+- Cron scheduled: `0 1 * * *` (daily 1am UTC = 9am MYT)
+
+---
+
 ## v2.3 — 10 June 2026
 
 ### 📋 User Subscription Section in Settings
