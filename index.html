@@ -87,9 +87,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .admin-user-new{border-color:#7c3aed!important;background:#faf5ff!important}
 .admin-user-selected{border-color:var(--teal)!important;background:#f0fdfa!important}
 /* Billing */
-.billing-tabs{display:flex;gap:.5rem;background:var(--surface);border-radius:10px;padding:4px;margin-bottom:1.25rem}
-.billing-tab{flex:1;padding:.5rem;border:none;border-radius:8px;background:transparent;font-family:inherit;font-size:.875rem;font-weight:500;cursor:pointer;color:var(--muted);transition:all .15s}
-.billing-tab.active{background:#fff;color:var(--teal);font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.billing-tabs{display:flex;gap:.5rem;margin-bottom:1.25rem}
+.billing-tab{flex:1;padding:.65rem .5rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:#fff;font-family:inherit;font-size:.85rem;font-weight:600;cursor:pointer;color:var(--muted);transition:all .2s;text-align:center}
+.billing-tab:hover{border-color:var(--teal);color:var(--teal)}
+.billing-tab.active{background:var(--teal);border-color:var(--teal);color:#fff;box-shadow:0 2px 8px rgba(14,116,144,.25)}
 .subs-table{width:100%;border-collapse:collapse;font-size:.85rem}
 .subs-table th{text-align:left;padding:.6rem .75rem;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--border);white-space:nowrap}
 .subs-table td{padding:.75rem;border-bottom:1px solid var(--border);vertical-align:middle}
@@ -631,6 +632,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <div class="form-group"><label>Display Name</label><input type="text" id="settings-name" placeholder="Your name"></div>
         <button class="btn-save" onclick="saveSettings()">Save Settings</button>
       </div>
+
+      <!-- SUBSCRIPTION SECTION (hidden for admin) -->
+      <div class="settings-section" id="settings-subscription" style="display:none">
+        <h3>Subscription</h3>
+        <div id="settings-sub-status"></div>
+        <div id="settings-sub-history"></div>
+      </div>
+
       <div class="settings-section">
         <h3>Data Backup &amp; Import</h3>
         <button class="btn-export green" onclick="openExportModal('trips')">
@@ -1338,6 +1347,7 @@ function navigate(page) {
   document.querySelectorAll(`[onclick="navigate('${page}')"]`).forEach(n => n.classList.add('active'));
   if (page === 'calendar') renderCalendar();
   if (page === 'admin') renderAdminPanel();
+  if (page === 'settings') renderSettingsSubscription();
   // FAB: on calendar open busy modal, on other pages open trip modal
   const fab = document.getElementById('fab-btn');
   if (page === 'calendar') {
@@ -1352,7 +1362,78 @@ function navigate(page) {
   }
 }
 
-// ── BILLING TABS ───────────────────────────────────────────────────────────
+// ── SETTINGS SUBSCRIPTION ──────────────────────────────────────────────────
+async function renderSettingsSubscription() {
+  // Hide for admin
+  const section = document.getElementById('settings-subscription');
+  if (currentUser.email === ADMIN_EMAIL) { section.style.display = 'none'; return; }
+  section.style.display = '';
+
+  const profile = userProfile;
+  const now = new Date();
+  const st = getUserStatus(profile);
+  const expiry = profile?.subscription_expiry_date ? new Date(profile.subscription_expiry_date) : null;
+  const isForever = expiry && expiry.getFullYear() >= now.getFullYear() + 50;
+  const trialStart = profile?.trial_start_date ? new Date(profile.trial_start_date) : now;
+  const trialDays = parseInt(appSettings.trial_days || '7');
+  const trialLeft = trialDays - Math.floor((now - trialStart) / (1000*60*60*24));
+
+  const statusClasses = {active:'status-active', trial:'status-trial', expired:'status-expired', blocked:'status-blocked'};
+  const statusColors = {active:'#065f46', trial:'#92400e', expired:'#991b1b', blocked:'#991b1b'};
+
+  let expiryLine = '';
+  let daysLine = '';
+  if (isForever) {
+    expiryLine = 'Active forever ♾';
+    daysLine = '';
+  } else if (expiry && st === 'active') {
+    const daysLeft = Math.ceil((expiry - now) / (1000*60*60*24));
+    expiryLine = `Expires: ${expiry.toLocaleDateString('en-MY', {day:'numeric',month:'long',year:'numeric'})}`;
+    daysLine = `${daysLeft} day${daysLeft!==1?'s':''} remaining`;
+  } else if (expiry && st === 'expired') {
+    const daysAgo = Math.abs(Math.ceil((expiry - now) / (1000*60*60*24)));
+    expiryLine = `Expired: ${expiry.toLocaleDateString('en-MY', {day:'numeric',month:'long',year:'numeric'})}`;
+    daysLine = `${daysAgo} day${daysAgo!==1?'s':''} ago`;
+  } else if (st === 'trial') {
+    expiryLine = `Free trial`;
+    daysLine = trialLeft > 0 ? `${trialLeft} day${trialLeft!==1?'s':''} remaining` : 'Trial ended';
+  }
+
+  document.getElementById('settings-sub-status').innerHTML = `
+    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:1rem;margin-bottom:1rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+        <span style="font-weight:700;font-size:.95rem">${profile?.name || 'Your account'}</span>
+        <span class="status-badge ${statusClasses[st]}">${st.charAt(0).toUpperCase()+st.slice(1)}</span>
+      </div>
+      <div style="font-size:.85rem;color:var(--muted)">${expiryLine}</div>
+      ${daysLine ? `<div style="font-size:.85rem;font-weight:600;color:${statusColors[st]};margin-top:.2rem">${daysLine}</div>` : ''}
+    </div>`;
+
+  // Load payment history
+  const { data: payments } = await sb.from('subscription_payments')
+    .select('*').eq('user_id', currentUser.id).order('payment_date', {ascending: false});
+
+  if (!payments?.length) {
+    document.getElementById('settings-sub-history').innerHTML =
+      '<p style="font-size:.85rem;color:var(--muted)">No payment history yet.</p>';
+    return;
+  }
+
+  document.getElementById('settings-sub-history').innerHTML = `
+    <div style="font-size:.8rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem">Payment History</div>
+    ${payments.map(p => {
+      const d = new Date(p.payment_date).toLocaleDateString('en-MY', {day:'numeric',month:'short',year:'numeric'});
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:.625rem 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:.875rem;font-weight:600">${d} · ${p.months} month${p.months>1?'s':''}</div>
+          ${p.notes ? `<div style="font-size:.75rem;color:var(--muted)">${p.notes}</div>` : ''}
+        </div>
+        <div style="font-weight:700;color:var(--teal)">RM ${parseFloat(p.amount).toFixed(2)}</div>
+      </div>`;
+    }).join('')}`;
+}
+
+
 let activeBillingTab = 'subs';
 
 function switchBillingTab(tab) {
@@ -1402,10 +1483,10 @@ async function renderSubscriptionsTable() {
       <td><span class="status-badge ${statusClasses[st]}">${statusLabels[st]}</span></td>
       <td style="white-space:nowrap">${expiryStr}</td>
       <td style="${daysColor};white-space:nowrap">${daysStr}</td>
-      <td style="white-space:nowrap;display:flex;gap:.375rem;flex-wrap:wrap">
-        <button class="renew-btn" onclick="openPaymentModal('${p.id}','${(p.name||'').replace(/'/g,"\\'")}','${p.email||''}','${p.subscription_expiry_date||''}')">Renew</button>
+      <td style="white-space:nowrap;display:flex;gap:.375rem;flex-wrap:wrap;align-items:center">
+        <button class="renew-btn" onclick="openPaymentModal('${p.id}','${(p.name||'').replace(/'/g,"\\'")}','${p.email||''}','${p.subscription_expiry_date||''}')">💰 Renew</button>
         <button class="renew-btn" style="background:#059669" onclick="renewUserForever('${p.id}')">♾ Forever</button>
-        <button class="renew-btn" style="background:#6b7280" onclick="markUserExpired('${p.id}')">Expire</button>
+        <button class="renew-btn" style="background:none;color:#6b7280;border:1.5px solid #d1d5db;font-weight:500" onclick="markUserExpired('${p.id}')">Expire</button>
       </td>
     </tr>`;
   }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:2rem">No users found</td></tr>';
