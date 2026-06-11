@@ -880,6 +880,33 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     </div>
     <div class="modal-body">
       <input type="hidden" id="trip-id-edit">
+
+      <!-- Mode tabs (only shown for new trips) -->
+      <div id="trip-mode-tabs" style="display:flex;gap:.5rem;margin-bottom:1rem">
+        <button class="billing-tab active" id="trip-tab-form" onclick="switchTripTab('form')" style="flex:1">✏️ Fill Form</button>
+        <button class="billing-tab" id="trip-tab-paste" onclick="switchTripTab('paste')" style="flex:1">📋 Paste Text</button>
+      </div>
+
+      <!-- Paste panel -->
+      <div id="trip-paste-panel" style="display:none">
+        <div class="form-group">
+          <label>Paste your booking message or text</label>
+          <div style="background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:var(--radius-sm);padding:.625rem .875rem;margin-bottom:.5rem;font-size:.78rem;color:#0369a1;line-height:1.6">
+            <div style="font-weight:700;margin-bottom:.25rem">Examples:</div>
+            <div>• 15 June 9am, Ahmad 0123456789, KLIA2 to Bukit Bintang, RM 120</div>
+            <div>• 20/6 14:30, Lim 012-3456789, from No.5 Jln Ampang to KLCC, RM 80</div>
+            <div>• June 25 8am James Wong 0171234567 Genting to KL Sentral 250</div>
+          </div>
+          <textarea id="trip-paste-text" rows="5" placeholder="Paste your booking text here..." style="width:100%;padding:.75rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:.875rem;resize:vertical"></textarea>
+        </div>
+        <button class="btn-save" style="width:100%" onclick="parseTrip()" id="trip-parse-btn">
+          ✨ Extract Trip Details
+        </button>
+        <div id="trip-parse-status" style="margin-top:.75rem;font-size:.85rem;color:var(--muted);text-align:center"></div>
+      </div>
+
+      <!-- Form panel -->
+      <div id="trip-form-panel">
       <div class="form-row">
         <div class="form-group"><label>Date *</label><input type="date" id="t-date"></div>
         <div class="form-group"><label>Time *</label><input type="time" id="t-time"></div>
@@ -975,6 +1002,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <label class="toggle"><input type="checkbox" id="t-paid"><span class="toggle-slider"></span></label>
       </div>
     </div>
+      </div> <!-- end trip-form-panel -->
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal('trip-modal')">Cancel</button>
       <button class="btn-save" onclick="saveTrip()">Save Trip</button>
@@ -2467,11 +2495,157 @@ function getLocFields(containerId) {
 }
 
 // ── TRIP CRUD ──────────────────────────────────────────────────────────────
+// ── TRIP PASTE / AI PARSE ──────────────────────────────────────────────────
+function switchTripTab(tab) {
+  document.getElementById('trip-tab-form').classList.toggle('active', tab === 'form');
+  document.getElementById('trip-tab-paste').classList.toggle('active', tab === 'paste');
+  document.getElementById('trip-form-panel').style.display = tab === 'form' ? '' : 'none';
+  document.getElementById('trip-paste-panel').style.display = tab === 'paste' ? '' : 'none';
+  document.querySelector('.modal-footer').style.display = tab === 'paste' ? 'none' : '';
+}
+
+async function parseTrip() {
+  const text = document.getElementById('trip-paste-text').value.trim();
+  if (!text) return toast('Please paste some text first', 'error');
+  const btn = document.getElementById('trip-parse-btn');
+  const status = document.getElementById('trip-parse-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ Extracting...';
+  status.textContent = '';
+
+  try {
+    const result = parseTripText(text);
+    switchTripTab('form');
+    if (result.date) document.getElementById('t-date').value = result.date;
+    if (result.time) document.getElementById('t-time').value = result.time;
+    if (result.guest_name) document.getElementById('t-name').value = result.guest_name;
+    document.getElementById('t-contact-list').innerHTML = '';
+    addContactField(result.guest_contact || '');
+    document.getElementById('t-pickup-list').innerHTML = '';
+    addLocField('t-pickup-list', result.pickup || '');
+    document.getElementById('t-dropoff-list').innerHTML = '';
+    addLocField('t-dropoff-list', result.dropoff || '');
+    if (result.amount && result.amount !== '0') document.getElementById('t-charge').value = result.amount;
+    if (result.notes) document.getElementById('t-notes').value = result.notes;
+    toast('Trip details extracted! Please review and save.', 'success');
+  } catch(e) {
+    status.textContent = '⚠️ Could not extract. Please fill manually.';
+    switchTripTab('form');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨ Extract Trip Details';
+  }
+}
+
+function parseTripText(text) {
+  const result = { date: '', time: '', guest_name: '', guest_contact: '', pickup: '', dropoff: '', amount: '0', notes: '' };
+  const now = new Date();
+  const year = now.getFullYear();
+
+  // ── TIME ──
+  const timeMatch = text.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i)
+    || text.match(/\b(\d{2}):(\d{2})\b/);
+  if (timeMatch) {
+    let h = parseInt(timeMatch[1]), m = parseInt(timeMatch[2] || '0');
+    const ampm = timeMatch[3]?.toLowerCase();
+    if (ampm === 'pm' && h < 12) h += 12;
+    if (ampm === 'am' && h === 12) h = 0;
+    result.time = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  }
+
+  // ── DATE ──
+  const months = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12,
+    january:1,february:2,march:3,april:4,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
+  const dateMatch = text.match(/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/)
+    || text.match(/(\d{1,2})\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+(\d{4}))?/i)
+    || text.match(/(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})(?:\s+(\d{4}))?/i);
+  if (dateMatch) {
+    let day, month, yr = year;
+    if (dateMatch[0].match(/[a-z]/i)) {
+      // Has month name
+      const monthStr = (dateMatch[1].match(/[a-z]/i) ? dateMatch[1] : dateMatch[2]).toLowerCase().slice(0,3);
+      day = parseInt(dateMatch[1].match(/[a-z]/i) ? dateMatch[2] : dateMatch[1]);
+      month = months[Object.keys(months).find(k => k.startsWith(monthStr))] || 1;
+      yr = parseInt(dateMatch[3] || year);
+    } else {
+      day = parseInt(dateMatch[1]);
+      month = parseInt(dateMatch[2]);
+      yr = parseInt(dateMatch[3] || year);
+      if (yr < 100) yr += 2000;
+    }
+    result.date = `${yr}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  }
+
+  // ── PHONE ──
+  const phoneMatch = text.match(/(\+?6?0?\d[\d\-\s]{7,12}\d)/);
+  if (phoneMatch) result.guest_contact = phoneMatch[1].replace(/[\s\-]/g, '');
+
+  // ── AMOUNT ──
+  const amountMatch = text.match(/RM\s*(\d+(?:\.\d{1,2})?)/i) || text.match(/(\d+(?:\.\d{1,2})?)\s*(?:ringgit|MYR)/i);
+  if (amountMatch) result.amount = amountMatch[1];
+
+  // ── PICKUP & DROPOFF ── 
+  // Strategy: find " to " and take everything before as pickup, after as dropoff
+  // But exclude "to" that's part of a time (e.g. "9am to 11am") or date
+  // Use greedy match: longest "X to Y" where X and Y look like locations
+  const toPattern = /(.+?)\s+to\s+(.+?)(?:\s*,\s*(?:RM\s*\d|$)|\s*RM\s*\d|$)/i;
+  
+  // Work on text stripped of date/time/phone/price tokens
+  let locText = text
+    .replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b/gi, '')
+    .replace(/\bRM\s*\d+(?:\.\d+)?\b/gi, '')
+    .replace(/\+?6?0\d[\d\-\s]{7,11}\d/g, '')
+    .replace(/\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?/g, '')
+    .replace(/\b\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/gi, '')
+    .replace(/\s{2,}/g, ' ').trim();
+
+  // Remove leading/trailing commas and clean
+  locText = locText.replace(/^[,\s]+|[,\s]+$/g, '').trim();
+
+  const toMatch = locText.match(/^(.*?)\s+to\s+(.*)$/i);
+  if (toMatch) {
+    // Pickup: strip leading name/contact noise (short tokens at start)
+    let pickup = toMatch[1].trim();
+    let dropoff = toMatch[2].trim();
+    
+    // If pickup starts with a short word (likely a name), remove it
+    // Names are usually 1-2 words before the location
+    const pickupParts = pickup.split(/,\s*/);
+    if (pickupParts.length > 1) {
+      // Check if first part looks like a name (short, no numbers, no common location words)
+      const firstPart = pickupParts[0].trim();
+      const looksLikeName = /^[A-Za-z\s]+$/.test(firstPart) && firstPart.split(' ').length <= 3 && firstPart.length < 30;
+      const looksLikeLocation = /\d|jalan|jln|lorong|taman|bandar|klia|airport|plaza|tower|menara|mall|centre|center|KL|PJ|PJ/i.test(firstPart);
+      if (looksLikeName && !looksLikeLocation) {
+        result.guest_name = result.guest_name || firstPart;
+        pickup = pickupParts.slice(1).join(', ').trim();
+      }
+    }
+    result.pickup = pickup;
+    result.dropoff = dropoff;
+    locText = locText.replace(toMatch[0], '').trim();
+  }
+
+  // ── GUEST NAME ── extract from remaining text
+  if (!result.guest_name) {
+    let namePart = locText.replace(/[,|·•\-]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+    const nameMatch = namePart.match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\b/);
+    if (nameMatch) result.guest_name = nameMatch[1];
+  }
+
+  return result;
+}
+
 function openTripModal(trip = null) {
   if (guardReadOnly()) return;
   const isEdit = !!trip;
   document.getElementById('trip-modal-title').textContent = isEdit ? 'Edit Trip' : 'New Trip';
   document.getElementById('trip-id-edit').value = isEdit ? trip.id : '';
+  // Show paste tab only for new trips
+  document.getElementById('trip-mode-tabs').style.display = isEdit ? 'none' : '';
+  document.getElementById('trip-paste-text').value = '';
+  document.getElementById('trip-parse-status').textContent = '';
+  switchTripTab('form');
   const today = new Date().toISOString().split('T')[0];
   const now = new Date().toTimeString().slice(0,5);
   document.getElementById('t-date').value = isEdit ? trip.date : today;
