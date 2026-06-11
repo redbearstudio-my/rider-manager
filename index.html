@@ -1291,43 +1291,48 @@ function guardReadOnly() {
 }
 
 async function initApp(user) {
+  console.log('initApp started', user?.email);
   currentUser = user;
-  await loadProfile();
-  await loadAppSettings();
+  try { await loadProfile(); console.log('loadProfile done'); } catch(e) { console.error('loadProfile error:', e); }
+  try { await loadAppSettings(); console.log('loadAppSettings done'); } catch(e) { console.error('loadAppSettings error:', e); }
 
-  // Show onboarding for brand new users (name not yet customised)
-  const defaultName = user.user_metadata?.full_name || user.email?.split('@')[0] || '';
-  const isNewUser = !userProfile?.onboarded &&
-    (!userProfile?.name || userProfile.name === defaultName);
-
-  if (isNewUser && user.email !== ADMIN_EMAIL) {
+  // Admin always gets full access
+  if (user.email === ADMIN_EMAIL) {
+    console.log('admin path');
     showApp();
-    try { await loadAll(); } catch(e) {}
-    showOnboarding();
-    return;
-  }
-
-  let access = true;
-  try {
-    access = await checkSubscriptionAccess();
-  } catch(e) {
-    console.error('checkSubscriptionAccess error:', e);
-  }
-  if (!access) return;
-  showApp();
-  try { await loadAll(); } catch(e) { console.warn('loadAll error:', e); }
-  if (currentUser.email === ADMIN_EMAIL) {
+    try { await loadAll(); } catch(e) { console.warn('loadAll error:', e); }
     document.getElementById('nav-admin').style.display = 'flex';
     document.getElementById('bnav-admin').style.display = 'flex';
     const { data: newUsers } = await sb.from('profiles')
       .select('id')
       .gt('trial_start_date', new Date(Date.now() - 24*60*60*1000).toISOString());
     if (newUsers?.length) updateAdminBadge(newUsers.length);
-  } else {
-    document.getElementById('nav-subscription').style.display = 'flex';
-    const subRow = document.getElementById('stg-subscription-row');
-    if (subRow) subRow.style.display = 'flex';
+    return;
   }
+
+  console.log('user path, userProfile:', userProfile?.name);
+  const navSub = document.getElementById('nav-subscription');
+  const subRow = document.getElementById('stg-subscription-row');
+  if (navSub) navSub.style.display = 'flex';
+  if (subRow) subRow.style.display = 'flex';
+
+  const defaultName = user.user_metadata?.full_name || user.email?.split('@')[0] || '';
+  const isNewUser = !userProfile?.onboarded && (!userProfile?.name || userProfile.name === defaultName);
+  console.log('isNewUser:', isNewUser, 'onboarded:', userProfile?.onboarded);
+
+  if (isNewUser) {
+    console.log('showing onboarding');
+    showApp();
+    try { await loadAll(); } catch(e) {}
+    showOnboarding();
+    return;
+  }
+
+  try { await checkSubscriptionAccess(); console.log('subscription check done'); } catch(e) { console.warn('subscription check error:', e); }
+  console.log('calling showApp');
+  showApp();
+  try { await loadAll(); } catch(e) { console.warn('loadAll error:', e); }
+  console.log('initApp complete');
 }
 
 async function loadAppSettings() {
@@ -1338,7 +1343,8 @@ async function loadAppSettings() {
 }
 
 async function checkSubscriptionAccess() {
-  if (currentUser.email === ADMIN_EMAIL) return true;
+  if (!currentUser || currentUser.email === ADMIN_EMAIL) return;
+  if (!userProfile) { setReadOnly(false); return; }
 
   const profile = userProfile;
   const status = profile?.subscription_status || 'trial';
@@ -1417,7 +1423,7 @@ async function showReadOnlyBanner(reason) {
 
 async function loadProfile() {
   try {
-    const { data, error } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+    const { data, error } = await sb.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
     if (!data) {
       // New user — create profile
       const { error: upsertError } = await sb.from('profiles').upsert({
@@ -1427,15 +1433,14 @@ async function loadProfile() {
         trial_start_date: new Date().toISOString(),
         subscription_status: 'trial',
         is_approved: false,
+        onboarded: false,
         updated_at: new Date().toISOString()
-      });
-      if (!upsertError) {
-        const { data: newData } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
-        userProfile = newData;
-      }
+      }, { onConflict: 'id' });
+      if (upsertError) console.warn('Profile create error:', upsertError.message);
+      const { data: newData } = await sb.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
+      userProfile = newData || null;
     } else {
       userProfile = data;
-      // Update email if missing (best effort, ignore errors)
       if (!data.email && currentUser.email) {
         sb.from('profiles').update({ email: currentUser.email }).eq('id', currentUser.id).then(() => {});
         userProfile = { ...data, email: currentUser.email };
@@ -1444,17 +1449,16 @@ async function loadProfile() {
   } catch(e) {
     console.warn('loadProfile error:', e);
   }
+
   const name = userProfile?.name || currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
   document.getElementById('sb-name').textContent = name;
   document.getElementById('sb-avatar').textContent = name[0].toUpperCase();
   document.getElementById('home-greeting').textContent = `Hello, ${name}!`;
-  // Settings profile header
   if (document.getElementById('stg-avatar-display')) {
     document.getElementById('stg-avatar-display').textContent = name[0].toUpperCase();
     document.getElementById('stg-profile-name-display').textContent = name;
     document.getElementById('stg-profile-email-display').textContent = currentUser.email || '';
-    // Status badge
-    if (currentUser.email !== ADMIN_EMAIL) {
+    if (currentUser.email !== ADMIN_EMAIL && userProfile) {
       const st = getUserStatus(userProfile);
       const colors = {active:'#065f46;background:#d1fae5', trial:'#92400e;background:#fef3c7', expired:'#991b1b;background:#fee2e2', blocked:'#991b1b;background:#fee2e2'};
       const labels = {active:'✅ Active', trial:'🕐 Trial', expired:'⚠️ Expired', blocked:'🚫 Blocked'};
@@ -1464,9 +1468,7 @@ async function loadProfile() {
     }
   }
   if (document.getElementById('settings-name')) document.getElementById('settings-name').value = name;
-  if (document.getElementById('settings-phone')) {
-    document.getElementById('settings-phone').value = userProfile?.phone || '';
-  }
+  if (document.getElementById('settings-phone')) document.getElementById('settings-phone').value = userProfile?.phone || '';
 }
 
 async function loadAll() {
@@ -1881,6 +1883,7 @@ async function savePayment() {
 // ── ADMIN PANEL ────────────────────────────────────────────────────────────
 
 function getUserStatus(p) {
+  if (!p) return 'trial';
   if (p.subscription_status === 'blocked') return 'blocked';
   if (p.subscription_expiry_date) {
     return new Date(p.subscription_expiry_date) > new Date() ? 'active' : 'expired';
@@ -1914,10 +1917,29 @@ async function renderAdminPanel() {
   if (currentUser.email !== ADMIN_EMAIL) return;
   document.getElementById('admin-price-input').value = appSettings.subscription_price || '30';
   document.getElementById('admin-reminder-days').value = appSettings.expiry_reminder_days || '7';
-  // Default to subscriptions tab
+  // Always load stats regardless of tab
+  await loadAdminStats();
   if (activeBillingTab === 'subs') renderSubscriptionsTable();
   else if (activeBillingTab === 'history') renderPaymentHistory();
   else renderUsersTab();
+}
+
+async function loadAdminStats() {
+  const { data: profiles } = await sb.from('profiles').select('id,subscription_status,subscription_expiry_date,trial_start_date');
+  if (!profiles) return;
+  const now = new Date();
+  const reminderDays = parseInt(appSettings.expiry_reminder_days || '7');
+  const total = profiles.length;
+  const active = profiles.filter(p => getUserStatus(p) === 'active').length;
+  const expiring = profiles.filter(p => {
+    if (!p.subscription_expiry_date) return false;
+    const exp = new Date(p.subscription_expiry_date);
+    const days = Math.ceil((exp - now) / (1000*60*60*24));
+    return days > 0 && days <= reminderDays;
+  }).length;
+  document.getElementById('admin-total-users').textContent = total;
+  document.getElementById('admin-active-users').textContent = active;
+  document.getElementById('admin-expiring-users').textContent = expiring;
 }
 
 async function renderUsersTab() {
@@ -2012,6 +2034,7 @@ async function renderUsersTab() {
             <button class="admin-btn trial" onclick="resetTrial('${p.id}')">↺ Trial</button>
             <button class="admin-btn" style="border-color:#6b7280;color:#6b7280" onclick="markUserExpired('${p.id}')">⏱ Expire</button>
             <button class="admin-btn block" onclick="setUserStatus('${p.id}','blocked',false)">${st==='blocked'?'✓ Unblock':'✕ Block'}</button>
+            <button class="admin-btn block" style="border-color:#dc2626;color:#dc2626" onclick="deleteUser('${p.id}','${(p.name||'').replace(/'/g,"\\'")}')">🗑 Delete</button>
           </div>
         </div>
       </div>
@@ -2087,6 +2110,15 @@ async function renewUserForever(userId) {
   toast('Set to active forever ♾', 'success');
   if (activeBillingTab === 'subs') renderSubscriptionsTable();
   else renderUsersTab();
+}
+
+async function deleteUser(userId, name) {
+  if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
+  const { error } = await sb.from('profiles').delete().eq('id', userId);
+  if (error) return toast(error.message, 'error');
+  toast(`User "${name}" deleted`, 'success');
+  renderUsersTab();
+  loadAdminStats();
 }
 
 async function resetTrial(userId) {
@@ -2939,7 +2971,7 @@ function exportExpensesPDF(rows, userName, rangeLabel, groupByCat, fileLabel) {
         <tr class="total-row"><td colspan="2">Total</td><td style="text-align:right">RM ${total.toFixed(2)}</td><td></td></tr>
       </tbody>
     </table>
-    <script>window.onload=()=>{window.print()}<\/script>
+    <scr' + 'ipt>window.onload=()=>{window.print()}<\/scr' + 'ipt>
     </body></html>`;
 
   const w = window.open('', '_blank');
@@ -3207,21 +3239,10 @@ function emptyState(msg) {
 }
 
 // ── STARTUP ────────────────────────────────────────────────────────────────
-let appInitialized = false;
-
-// Safety timeout — if nothing happens in 8s, show auth screen
-const startupTimeout = setTimeout(() => {
-  if (!appInitialized) {
-    console.warn('Startup timeout — showing auth');
-    showAuth();
-  }
-}, 8000);
-
 sb.auth.onAuthStateChange(async (event, session) => {
   if (event === 'SIGNED_OUT') {
     currentUser = null;
     userProfile = null;
-    appInitialized = false;
     showAuth();
   }
 });
@@ -3229,16 +3250,13 @@ sb.auth.onAuthStateChange(async (event, session) => {
 (async () => {
   try {
     const { data: { session } } = await sb.auth.getSession();
-    clearTimeout(startupTimeout);
     if (session?.user) {
       await initApp(session.user);
     } else {
       showAuth();
     }
-    appInitialized = true;
   } catch(e) {
     console.error('Startup error:', e);
-    clearTimeout(startupTimeout);
     showAuth();
   }
 })();
