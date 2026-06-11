@@ -660,6 +660,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <div>
           <div class="stg-profile-name" id="stg-profile-name-display">—</div>
           <div class="stg-profile-email" id="stg-profile-email-display">—</div>
+          <div id="stg-profile-status" style="margin-top:.35rem"></div>
         </div>
       </div>
 
@@ -1452,6 +1453,15 @@ async function loadProfile() {
     document.getElementById('stg-avatar-display').textContent = name[0].toUpperCase();
     document.getElementById('stg-profile-name-display').textContent = name;
     document.getElementById('stg-profile-email-display').textContent = currentUser.email || '';
+    // Status badge
+    if (currentUser.email !== ADMIN_EMAIL) {
+      const st = getUserStatus(userProfile);
+      const colors = {active:'#065f46;background:#d1fae5', trial:'#92400e;background:#fef3c7', expired:'#991b1b;background:#fee2e2', blocked:'#991b1b;background:#fee2e2'};
+      const labels = {active:'✅ Active', trial:'🕐 Trial', expired:'⚠️ Expired', blocked:'🚫 Blocked'};
+      const [color, bg] = (colors[st]||'#6b7280;background:#f3f4f6').split(';background:');
+      const statusEl = document.getElementById('stg-profile-status');
+      if (statusEl) statusEl.innerHTML = `<span style="display:inline-block;font-size:.75rem;font-weight:700;color:#${color};background:#${bg};padding:.2rem .6rem;border-radius:20px">${labels[st]||st}</span>`;
+    }
   }
   if (document.getElementById('settings-name')) document.getElementById('settings-name').value = name;
   if (document.getElementById('settings-phone')) {
