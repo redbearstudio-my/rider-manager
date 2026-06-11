@@ -886,7 +886,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       </div>
       <div class="form-row">
         <div class="form-group"><label>Guest Name</label><input type="text" id="t-name" placeholder="Guest name"></div>
-        <div class="form-group"><label>Guest Contact *</label><input type="tel" id="t-contact" placeholder="+60123456789"></div>
+      </div>
+      <div class="form-group">
+        <label>Guest Contact(s) *</label>
+        <div id="t-contact-list"></div>
+        <button type="button" class="loc-add-btn" onclick="addContactField()">+ Add Contact</button>
       </div>
       <div class="form-group">
         <label>Pickup Locations *</label>
@@ -1384,10 +1388,23 @@ async function checkSubscriptionAccess() {
   const daysLeft = trialDays - Math.floor((now - trialStart) / (1000 * 60 * 60 * 24));
 
   if (daysLeft > 0) {
+    const price = appSettings.subscription_price || '30';
+    const waNum = appSettings.admin_whatsapp || '60122552829';
+    const adminName = appSettings.admin_name || 'Admin';
+    const userName = userProfile?.name || currentUser.email.split('@')[0];
+    const userEmail = userProfile?.email || currentUser.email || '';
+    const waMsg = `Hi ${adminName}, I want to subscribe to Rider Manager (RM ${price}/month). I am ${userName}, my email is ${userEmail}`;
+    const waLink = `https://wa.me/${waNum}?text=${encodeURIComponent(waMsg)}`;
     document.getElementById('trial-banner').style.display = 'flex';
     document.getElementById('trial-banner').style.background = 'linear-gradient(135deg,#f59e0b,#d97706)';
+    document.getElementById('trial-banner').style.flexWrap = 'wrap';
+    document.getElementById('trial-banner').style.gap = '.5rem';
     document.getElementById('trial-banner-text').innerHTML =
-      `Free trial: ${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining`;
+      `<span>🕐 Free trial: ${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining</span>
+       <a href="${waLink}" target="_blank" style="display:inline-flex;align-items:center;gap:.35rem;background:rgba(0,0,0,.2);color:#fff;font-weight:700;font-size:.75rem;padding:.25rem .65rem;border-radius:20px;text-decoration:none;white-space:nowrap">
+         <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+         Subscribe → RM ${price}/month
+       </a>`;
     setReadOnly(false);
     return true;
   }
@@ -1633,7 +1650,6 @@ function openSettingsModal(type) {
 
 // ── SETTINGS SUBSCRIPTION ──────────────────────────────────────────────────
 async function renderSettingsSubscription() {
-  // Hide subscription nav for admin
   if (currentUser.email === ADMIN_EMAIL) return;
 
   const profile = userProfile;
@@ -1644,15 +1660,20 @@ async function renderSettingsSubscription() {
   const trialStart = profile?.trial_start_date ? new Date(profile.trial_start_date) : now;
   const trialDays = parseInt(appSettings.trial_days || '7');
   const trialLeft = trialDays - Math.floor((now - trialStart) / (1000*60*60*24));
+  const price = appSettings.subscription_price || '30';
+  const waNum = appSettings.admin_whatsapp || '60122552829';
+  const adminName = appSettings.admin_name || 'Admin';
+  const userName = profile?.name || currentUser.email.split('@')[0];
+  const userEmail = profile?.email || currentUser.email || '';
+  const waMsg = `Hi ${adminName}, I want to subscribe to Rider Manager (RM ${price}/month). I am ${userName}, my email is ${userEmail}`;
+  const waLink = `https://wa.me/${waNum}?text=${encodeURIComponent(waMsg)}`;
 
   const statusClasses = {active:'status-active', trial:'status-trial', expired:'status-expired', blocked:'status-blocked'};
   const statusColors = {active:'#065f46', trial:'#92400e', expired:'#991b1b', blocked:'#991b1b'};
 
-  let expiryLine = '';
-  let daysLine = '';
+  let expiryLine = '', daysLine = '';
   if (isForever) {
     expiryLine = 'Active forever ♾';
-    daysLine = '';
   } else if (expiry && st === 'active') {
     const daysLeft = Math.ceil((expiry - now) / (1000*60*60*24));
     expiryLine = `Expires: ${expiry.toLocaleDateString('en-MY', {day:'numeric',month:'long',year:'numeric'})}`;
@@ -1666,7 +1687,21 @@ async function renderSettingsSubscription() {
     daysLine = trialLeft > 0 ? `${trialLeft} day${trialLeft!==1?'s':''} remaining` : 'Trial ended';
   }
 
+  // WhatsApp CTA button — show for trial and expired users
+  const showWaCta = st === 'trial' || st === 'expired';
+  const waCta = showWaCta ? `
+    <div style="background:#fff;border:1.5px solid #25d366;border-radius:var(--radius-sm);padding:1rem;margin-bottom:1rem;text-align:center">
+      <div style="font-size:.85rem;color:var(--muted);margin-bottom:.75rem">
+        ${st === 'trial' ? `Subscribe now to continue after your trial · <strong>RM ${price}/month</strong>` : `Renew your subscription · <strong>RM ${price}/month</strong>`}
+      </div>
+      <a href="${waLink}" target="_blank" style="display:inline-flex;align-items:center;justify-content:center;gap:.5rem;background:#25d366;color:#fff;text-decoration:none;padding:.75rem 1.5rem;border-radius:8px;font-weight:700;font-size:.95rem;width:100%;box-sizing:border-box">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        WhatsApp to Subscribe
+      </a>
+    </div>` : '';
+
   document.getElementById('settings-sub-status').innerHTML = `
+    ${waCta}
     <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:1rem;margin-bottom:1rem">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
         <span style="font-weight:700;font-size:.95rem">${profile?.name || 'Your account'}</span>
@@ -2294,11 +2329,18 @@ function tripCard(t) {
       <div>
         <div class="trip-date">${dateStr} • ${t.time}</div>
         <div class="trip-name">${t.guest_name || 'Guest'}</div>
-        <div style="display:flex;align-items:center;gap:.5rem;margin-top:.2rem">
-          <div class="trip-contact">${t.guest_contact || ''}</div>
-          ${t.guest_contact ? `<a href="https://wa.me/${(() => { let n = (t.guest_contact || '').replace(/[^0-9]/g,''); if (n.startsWith('60')) return n; if (n.startsWith('0')) return '6' + n; return '60' + n; })()}" target="_blank" title="WhatsApp" style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;background:#25d366;border-radius:50%;flex-shrink:0;text-decoration:none">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.136.564 4.14 1.547 5.874L.057 23.5l5.797-1.52A11.933 11.933 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.006-1.368l-.36-.214-3.713.974.99-3.626-.234-.373A9.818 9.818 0 1112 21.818z"/></svg>
-          </a>` : ''}
+        <div style="display:flex;flex-direction:column;gap:.3rem;margin-top:.2rem">
+          ${(t.guest_contact||'').split(' | ').filter(Boolean).map(contact => {
+            let n = contact.replace(/[^0-9]/g,'');
+            if (n.startsWith('0')) n = '6' + n;
+            else if (!n.startsWith('60')) n = '60' + n;
+            return `<div style="display:flex;align-items:center;gap:.5rem">
+              <span class="trip-contact">${contact}</span>
+              <a href="https://wa.me/${n}" target="_blank" style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;background:#25d366;border-radius:50%;flex-shrink:0;text-decoration:none">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.136.564 4.14 1.547 5.874L.057 23.5l5.797-1.52A11.933 11.933 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.006-1.368l-.36-.214-3.713.974.99-3.626-.234-.373A9.818 9.818 0 1112 21.818z"/></svg>
+              </a>
+            </div>`;
+          }).join('')}
         </div>
       </div>
     </div>
@@ -2343,6 +2385,45 @@ function setStepperVal(id, val) {
   const disp = document.getElementById(id + '-disp');
   if (hidden) hidden.value = val;
   if (disp) disp.textContent = val;
+}
+
+function addContactField(value = '') {
+  const container = document.getElementById('t-contact-list');
+  const index = container.children.length + 1;
+  const row = document.createElement('div');
+  row.className = 'loc-row';
+  row.innerHTML = `<span class="loc-num">${index}</span>
+    <input type="tel" placeholder="+60123456789" value="${value.replace(/"/g,'&quot;')}">
+    <button type="button" class="btn-remove" onclick="removeContactField(this)" title="Remove">✕</button>`;
+  container.appendChild(row);
+  renumberContacts();
+}
+
+function removeContactField(btn) {
+  const container = document.getElementById('t-contact-list');
+  if (container.children.length <= 1) {
+    btn.closest('.loc-row').querySelector('input').value = '';
+    return;
+  }
+  btn.closest('.loc-row').remove();
+  renumberContacts();
+}
+
+function renumberContacts() {
+  document.getElementById('t-contact-list').querySelectorAll('.loc-num').forEach((el, i) => el.textContent = i + 1);
+}
+
+function getContactValues() {
+  return [...document.getElementById('t-contact-list').querySelectorAll('input')]
+    .map(i => i.value.trim()).filter(Boolean).join(' | ');
+}
+
+function setContactFields(pipedValue) {
+  const container = document.getElementById('t-contact-list');
+  container.innerHTML = '';
+  const values = pipedValue ? pipedValue.split(' | ').filter(Boolean) : [''];
+  values.forEach(v => addContactField(v));
+  if (container.children.length === 0) addContactField();
 }
 
 function addLocField(containerId, value = '') {
@@ -2396,7 +2477,12 @@ function openTripModal(trip = null) {
   document.getElementById('t-date').value = isEdit ? trip.date : today;
   document.getElementById('t-time').value = isEdit ? trip.time.slice(0,5) : now;
   document.getElementById('t-name').value = isEdit ? (trip.guest_name || '') : '';
-  document.getElementById('t-contact').value = isEdit ? (trip.guest_contact || '') : '';
+  document.getElementById('t-contact-list').innerHTML = '';
+  if (isEdit) {
+    setContactFields(trip.guest_contact || '');
+  } else {
+    addContactField();
+  }
   // Populate dynamic location fields
   setLocFields('t-pickup-list', isEdit ? (trip.pickup_locations || '') : '');
   setLocFields('t-dropoff-list', isEdit ? (trip.dropoff_locations || '') : '');
@@ -2427,7 +2513,7 @@ async function saveTrip() {
     date: document.getElementById('t-date').value,
     time: document.getElementById('t-time').value,
     guest_name: document.getElementById('t-name').value.trim(),
-    guest_contact: document.getElementById('t-contact').value.trim(),
+    guest_contact: getContactValues(),
     pickup_locations: getLocFields('t-pickup-list'),
     dropoff_locations: getLocFields('t-dropoff-list'),
     adults: parseInt(document.getElementById('t-adults').value) || 0,
