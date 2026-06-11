@@ -2,6 +2,23 @@
 
 ---
 
+## v3.0 — 12 June 2026
+
+### 📱 Multiple Guest Contacts in Trips
+- Trip form now has dynamic "Guest Contact(s)" list — same UX as pickup/dropoff
+- Click **+ Add Contact** to add more contacts
+- Each contact gets its own WhatsApp button on the trip card
+- Stored as pipe-separated values in existing `guest_contact` column — no DB changes
+- Backward compatible with all existing single-contact trips
+
+### 💬 WhatsApp Subscribe CTA
+- **Trial banner** now shows "Subscribe → RM X/month" button alongside days remaining
+- **Subscription page** shows full-width green WhatsApp button for trial and expired users
+- Pre-filled message: "Hi admin, I want to subscribe... my email is X, my name is Y"
+- Active/Forever users see neither CTA
+
+---
+
 ## v2.9 — 11 June 2026
 
 ### 👤 New User Signup Fixes
