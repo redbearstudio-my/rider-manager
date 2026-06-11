@@ -150,13 +150,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .badge-pending{background:#fef3c7;color:#92400e}
 .badge-cancelled{background:#fee2e2;color:#991b1b}
 .badge-vip{background:#f3e8ff;color:#6b21a8}
-.trip-locations{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:.75rem 0;font-size:.85rem}
+.trip-locations{display:grid;grid-template-columns:1fr;gap:.5rem;margin:.75rem 0;font-size:.85rem}
 .loc-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:.2rem;font-weight:600}
 .loc-val{color:var(--text);font-weight:500}
-.loc-waze-row{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.25rem 0;border-bottom:1px solid var(--border)}
+.loc-waze-row{display:flex;flex-direction:column;gap:.3rem;padding:.3rem 0;border-bottom:1px solid var(--border)}
 .loc-waze-row:last-child{border-bottom:none}
-.loc-waze-row .loc-val{font-size:.85rem;flex:1}
-.waze-btn{display:inline-flex;align-items:center;gap:.25rem;padding:.25rem .5rem;background:#33ccff;color:#fff;border-radius:20px;font-size:.72rem;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:background .2s}
+.loc-waze-row .loc-val{font-size:.9rem}
+.waze-btn{display:inline-flex;align-items:center;gap:.25rem;padding:.3rem .7rem;background:#33ccff;color:#fff;border-radius:20px;font-size:.78rem;font-weight:700;text-decoration:none;white-space:nowrap;align-self:flex-start;transition:background .2s}
 .waze-btn:hover{background:#00b3e6}
 .trip-meta{display:flex;align-items:center;gap.75rem;font-size:.8rem;color:var(--muted);margin-top:.5rem;flex-wrap:wrap;gap:.5rem}
 .trip-meta span{display:flex;align-items:center;gap:.25rem}
@@ -537,6 +537,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <h1>Calendar</h1>
         <p>View your trip schedule</p>
       </div>
+      <div style="display:flex;gap:.75rem;font-size:.85rem;color:var(--muted);align-items:center;margin-bottom:.75rem">
+        <span style="display:flex;gap:.3rem;align-items:center"><span class="dot dot-trip" style="width:10px;height:10px"></span>Trip</span>
+        <span style="display:flex;gap:.3rem;align-items:center"><span class="dot dot-busy" style="width:10px;height:10px"></span>Busy</span>
+      </div>
       <div class="card">
         <div class="cal-month-nav">
           <button class="btn-nav" onclick="calPrev()">&#8249;</button>
@@ -556,10 +560,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         </div>
         <div id="cal-busy-list"></div>
         <div id="cal-trips-list"></div>
-      </div>
-      <div style="display:flex;gap:.5rem;margin-top:.75rem;font-size:.8rem;color:var(--muted);align-items:center">
-        <span style="display:flex;gap:.3rem;align-items:center"><span class="dot dot-trip" style="width:8px;height:8px"></span>Trip</span>
-        <span style="display:flex;gap:.3rem;align-items:center"><span class="dot dot-busy" style="width:8px;height:8px"></span>Busy</span>
       </div>
     </div>
 
