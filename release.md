@@ -2,6 +2,29 @@
 
 ---
 
+## v2.8 — 11 June 2026
+
+### 📱 Mobile UX Overhaul
+- **Viewport fixed** — app always loads at correct zoom, never zoomed in on first open
+- **Bottom nav** — 6 fixed items, always single row, never wraps: Home / Trips / Cal / Expense / Report / Settings (users) or Admin (admin)
+- **Admin** back in bottom nav; Subscription accessible via Settings page
+- **FAB** raised to always be visible above nav bar
+- **Base font 16px** — comfortable for 50+ users
+- **Nav tap targets 48px** — meets accessibility minimum
+- **+ New Trip button** in Trips page header for easy access
+- **Trip status badges** moved below action buttons — always fully visible
+- **Waze button** now below address, not beside it — no more horizontal overflow
+- **Pickup/Dropoff** stack vertically — fits any phone width
+- **Calendar legend** moved to top, below page heading
+
+### 📊 Expense Export Improvements
+- Export modal: All / By Month / Date Range tabs
+- Group by Category — single sheet, rows sorted by category then date asc
+- PDF export option — opens print-ready page in new tab
+- Fixed toast: now says "Expense data exported"
+
+---
+
 ## v2.7 — 10 June 2026
 
 ### 📊 Expense Export — Date Selection & Group by Category
