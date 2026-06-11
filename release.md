@@ -2,6 +2,19 @@
 
 ---
 
+## v3.1 — 12 June 2026
+
+### 📋 Create Trip by Pasting Text
+- New **📋 Paste Text** tab in the New Trip modal
+- Paste any informal booking message — WhatsApp format, free text, any order
+- Smart client-side regex parser extracts: date, time, guest name, phone, pickup, dropoff, price
+- Handles commas inside addresses (e.g. "No. 5, Jalan Tun Razak to KLCC")
+- Blue hint box shows 3 example formats above the textarea
+- After extraction, switches to form tab with all fields pre-filled for review
+- Tab only shown for new trips, hidden when editing
+
+---
+
 ## v3.0 — 12 June 2026
 
 ### 📱 Multiple Guest Contacts in Trips
