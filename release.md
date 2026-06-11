@@ -2,6 +2,32 @@
 
 ---
 
+## v2.9 — 11 June 2026
+
+### 👤 New User Signup Fixes
+- Fixed 406 error — profile fetch now uses `maybeSingle()` instead of `single()` so no crash when profile doesn't exist yet
+- Fixed 400 error — profile creation upsert now includes all required columns including `onboarded`
+- `getUserStatus` is now null-safe — no crash when profile is null
+- New users can now sign up via Google OAuth on staging and production without infinite loading
+
+### 📧 Admin New User Email Notification
+- Admin receives email at `redbear.my@gmail.com` when a new user signs up
+- Email shows name, email, and signup time in MYT
+- Implemented via Supabase trigger `on_new_user_notify_admin` + Resend API
+- Fixed trigger crash (`record 'new' has no field 'created_at'`) — now uses `now()` instead
+
+### 🗑️ Delete User in Admin Panel
+- New **🗑 Delete** button in Users tab per user card
+- Confirmation dialog before deletion
+- Refreshes stats and user list after deletion
+- Requires `admin_delete_profiles` RLS policy on profiles table
+
+### 📊 Admin Stats Fix
+- Stats (Total / Active / Expiring Soon) now load independently via `loadAdminStats()`
+- Stats always show correct values regardless of which billing tab is active
+
+---
+
 ## v2.8 — 11 June 2026
 
 ### 📱 Mobile UX Overhaul
