@@ -1139,25 +1139,41 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <button class="modal-close" onclick="closeModal('export-trips-modal')">✕</button>
     </div>
     <div class="modal-body">
-      <label class="export-all-row">
-        <input type="checkbox" id="trip-export-all" onchange="toggleTripExportAll()">
-        <span>Export all trips</span>
-      </label>
-      <div id="trip-export-filters">
-        <div class="export-mode-tabs" style="margin-top:.75rem">
-          <button class="export-tab active" id="trip-tab-month" onclick="setExportTab('trip','month')">By Month</button>
-          <button class="export-tab" id="trip-tab-range" onclick="setExportTab('trip','range')">Date Range</button>
+
+      <!-- Text export section -->
+      <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:var(--radius-sm);padding:.875rem 1rem;margin-bottom:1rem">
+        <div style="font-weight:700;font-size:.875rem;margin-bottom:.625rem">📋 Export as Text (for offline use)</div>
+        <div style="font-size:.8rem;color:var(--muted);margin-bottom:.625rem">Copy upcoming trips as plain text — paste into WhatsApp or Notes.</div>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <label style="font-size:.85rem;white-space:nowrap">Next</label>
+          <input type="number" id="export-text-days" value="7" min="1" max="90" style="width:70px;padding:.4rem .5rem;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;text-align:center">
+          <label style="font-size:.85rem;white-space:nowrap">days</label>
+          <button class="btn-save" style="flex:1;padding:.45rem .75rem;font-size:.82rem" onclick="exportTripsAsText()">📋 Copy Text</button>
         </div>
-        <div id="trip-export-month" class="export-panel">
-          <div class="form-group" style="margin-top:1rem">
-            <label>Select Month</label>
-            <input type="month" id="trip-export-month-val">
+      </div>
+
+      <div style="border-top:1px solid var(--border);padding-top:1rem">
+        <div style="font-weight:700;font-size:.875rem;margin-bottom:.75rem">📊 Export as Excel</div>
+        <label class="export-all-row">
+          <input type="checkbox" id="trip-export-all" onchange="toggleTripExportAll()">
+          <span>Export all trips</span>
+        </label>
+        <div id="trip-export-filters">
+          <div class="export-mode-tabs" style="margin-top:.75rem">
+            <button class="export-tab active" id="trip-tab-month" onclick="setExportTab('trip','month')">By Month</button>
+            <button class="export-tab" id="trip-tab-range" onclick="setExportTab('trip','range')">Date Range</button>
           </div>
-        </div>
-        <div id="trip-export-range" class="export-panel" style="display:none">
-          <div class="form-row" style="margin-top:1rem">
-            <div class="form-group"><label>From</label><input type="date" id="trip-export-from"></div>
-            <div class="form-group"><label>To</label><input type="date" id="trip-export-to"></div>
+          <div id="trip-export-month" class="export-panel">
+            <div class="form-group" style="margin-top:1rem">
+              <label>Select Month</label>
+              <input type="month" id="trip-export-month-val">
+            </div>
+          </div>
+          <div id="trip-export-range" class="export-panel" style="display:none">
+            <div class="form-row" style="margin-top:1rem">
+              <div class="form-group"><label>From</label><input type="date" id="trip-export-from"></div>
+              <div class="form-group"><label>To</label><input type="date" id="trip-export-to"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -3050,6 +3066,73 @@ async function saveSettings() {
 
 // ── CSV EXPORT ─────────────────────────────────────────────────────────────
 // ── EXPORT MODALS ──────────────────────────────────────────────────────────
+function exportTripsAsText() {
+  const days = parseInt(document.getElementById('export-text-days').value) || 7;
+  const now = new Date();
+  const cutoff = new Date(now);
+  cutoff.setDate(cutoff.getDate() + days);
+  cutoff.setHours(23, 59, 59, 999);
+
+  const upcoming = trips.filter(t => {
+    if (t.status === 'cancelled') return false;
+    const d = new Date(t.date + 'T' + (t.time || '00:00'));
+    return d >= now && d <= cutoff;
+  }).sort((a, b) => {
+    const da = new Date(a.date + 'T' + (a.time || '00:00'));
+    const db = new Date(b.date + 'T' + (b.time || '00:00'));
+    return da - db;
+  });
+
+  if (!upcoming.length) {
+    toast(`No upcoming trips in the next ${days} days`, 'error');
+    return;
+  }
+
+  const fmt = d => new Date(d).toLocaleDateString('en-MY', {weekday:'short', day:'numeric', month:'short'});
+
+  let text = `🚗 UPCOMING TRIPS (Next ${days} days)\n`;
+  text += `📅 ${fmt(now)} — ${fmt(cutoff)}\n`;
+  text += `${'─'.repeat(30)}\n\n`;
+
+  upcoming.forEach((t, i) => {
+    const dateStr = new Date(t.date).toLocaleDateString('en-MY', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+    const time = t.time ? t.time.slice(0,5) : '';
+    const paid = t.payment_status === 'paid' ? '✅ Paid' : '💰 Unpaid';
+    text += `${i+1}. ${dateStr} • ${time}\n`;
+    if (t.guest_name) text += `   👤 ${t.guest_name}`;
+    if (t.guest_contact) text += ` • 📞 ${t.guest_contact.replace(' | ', ' / ')}`;
+    text += '\n';
+    if (t.pickup_locations) text += `   📍 From: ${t.pickup_locations}\n`;
+    if (t.dropoff_locations) text += `   🏁 To: ${t.dropoff_locations}\n`;
+    if (t.charge_amount && parseFloat(t.charge_amount) > 0) text += `   💵 RM ${parseFloat(t.charge_amount).toFixed(2)} • ${paid}\n`;
+    if (t.trip_notes) text += `   📝 ${t.trip_notes}\n`;
+    text += '\n';
+  });
+
+  text += `─`.repeat(30) + '\n';
+  text += `Total: ${upcoming.length} trip${upcoming.length !== 1 ? 's' : ''}`;
+
+  // Copy to clipboard
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => {
+      toast(`${upcoming.length} trips copied to clipboard!`, 'success');
+      closeModal('export-trips-modal');
+    }).catch(() => showTextFallback(text));
+  } else {
+    showTextFallback(text);
+  }
+}
+
+function showTextFallback(text) {
+  // Fallback: show in a modal for manual copy
+  const w = window.open('', '_blank', 'width=500,height=600');
+  w.document.write(`<html><body style="font-family:monospace;white-space:pre-wrap;padding:1rem;font-size:14px">${text.replace(/</g,'&lt;')}</body></html>`);
+  w.document.close();
+  toast('Opened in new window — select all and copy', 'success');
+  closeModal('export-trips-modal');
+}
+
+
 function toggleTripExportAll() {
   const checked = document.getElementById('trip-export-all').checked;
   document.getElementById('trip-export-filters').style.display = checked ? 'none' : '';
