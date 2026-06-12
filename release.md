@@ -2,6 +2,25 @@
 
 ---
 
+## v3.3 — 12 June 2026
+
+### 🗓️ Trip Creation Improvements
+- **Guest Contact now optional** — no longer blocks saving; marked as "(Optional)"
+- **Conflict detection** — warns when creating a trip at same date & time as existing trip; user can still proceed
+- **Collapsible Passengers & Luggage** — collapsed by default to reduce scroll; summary shown inline (e.g. "· 1A", "· 2B, 1M"); tap header to expand
+
+---
+
+## v3.2 — 12 June 2026
+
+### 📋 Export Upcoming Trips as Text
+- New green section in Export Trips modal: "Export as Text (for offline use)"
+- Set number of days (1–90), tap **📋 Copy Text** to copy to clipboard
+- Generates formatted plain text with emoji — ready to paste into WhatsApp or Notes
+- Sorted chronologically, includes name, contact, pickup, dropoff, amount, payment status
+
+---
+
 ## v3.1 — 12 June 2026
 
 ### 📋 Create Trip by Pasting Text
