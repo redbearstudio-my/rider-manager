@@ -3838,21 +3838,16 @@ async function registerPush() {
     const reg = await navigator.serviceWorker.register('/sw.js');
     await navigator.serviceWorker.ready;
 
-    // Always unsubscribe old subscription to force fresh one
+    // Always unsubscribe and get a fresh subscription to avoid stale endpoints
     const existing = await reg.pushManager.getSubscription();
-    if (existing) {
-      const endpoint = existing.endpoint || '';
-      // If old FCM format, force re-subscribe
-      if (endpoint.includes('/fcm/send/')) {
-        await existing.unsubscribe();
-      } else {
-        await savePushSubscription(existing);
-        return;
-      }
-    }
+    if (existing) await existing.unsubscribe();
 
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') return;
+    const permission = Notification.permission;
+    if (permission === 'denied') return;
+    if (permission !== 'granted') {
+      const result = await Notification.requestPermission();
+      if (result !== 'granted') return;
+    }
 
     const subscription = await reg.pushManager.subscribe({
       userVisibleOnly: true,
@@ -3860,7 +3855,6 @@ async function registerPush() {
     });
     await savePushSubscription(subscription);
     console.log('Push subscribed:', subscription.endpoint);
-    toast('🔔 Notifications enabled!', 'success');
   } catch(e) { console.warn('Push registration error:', e); }
 }
 
