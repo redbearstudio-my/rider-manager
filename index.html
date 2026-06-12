@@ -721,12 +721,25 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <!-- Support section -->
       <div class="stg-group-label">Support</div>
       <div class="stg-group">
+        <div class="stg-row" id="stg-notif-row" style="display:none">
+          <div class="stg-row-left">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+            Trip Notifications
+          </div>
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <span id="stg-notif-label" style="font-size:.78rem;color:var(--muted)">Off</span>
+            <label class="toggle" style="margin:0">
+              <input type="checkbox" id="stg-notif-toggle" onchange="toggleNotifications(this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
         <div class="stg-row">
           <div class="stg-row-left">
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             About
           </div>
-          <span style="font-size:.8rem;color:var(--muted)">v2.5.0</span>
+          <span style="font-size:.8rem;color:var(--muted)">v3.4.0</span>
         </div>
       </div>
 
@@ -771,6 +784,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <h1>Admin Panel</h1>
         <p>Manage user subscriptions</p>
       </div>
+      <button onclick="adminTestPushSelf()" style="width:100%;margin-bottom:1rem;padding:.6rem;background:#7c3aed;color:#fff;border:none;border-radius:var(--radius-sm);font-family:inherit;font-size:.85rem;font-weight:600;cursor:pointer">🔔 Send Test Push to Myself</button>
 
       <!-- Stats -->
       <div class="stats-row" style="margin-bottom:1rem">
@@ -1604,6 +1618,8 @@ function showApp() {
   document.getElementById('home-date').textContent = new Date().toLocaleDateString('en-MY', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
   // Show Add to Home Screen banner after 4 seconds
   setTimeout(showA2hsBanner, 4000);
+  // Register push notifications for all users including admin
+  setTimeout(registerPush, 5000);
 }
 function showView(v) {
   document.getElementById('view-login').style.display = v === 'login' ? 'block' : 'none';
@@ -1655,7 +1671,7 @@ function navigate(page) {
   document.querySelectorAll(`[onclick="navigate('${page}')"]`).forEach(n => n.classList.add('active'));
   if (page === 'calendar') renderCalendar();
   if (page === 'admin') renderAdminPanel();
-  if (page === 'settings') renderSettingsSubscription();
+  if (page === 'settings') { renderSettingsSubscription(); renderSettingsNotifications(); }
   if (page === 'subscription') renderSettingsSubscription();
   // FAB: on calendar open busy modal, on other pages open trip modal
   const fab = document.getElementById('fab-btn');
@@ -1727,7 +1743,38 @@ function openSettingsModal(type) {
   }
 }
 
-// ── SETTINGS SUBSCRIPTION ──────────────────────────────────────────────────
+async function toggleNotifications(enabled) {
+  const label = document.getElementById('stg-notif-label');
+  if (enabled) {
+    await registerPush();
+    // Check if actually enabled after permission
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      document.getElementById('stg-notif-toggle').checked = false;
+      label.textContent = 'Off';
+      return;
+    }
+    label.textContent = 'On';
+  } else {
+    await unsubscribePush();
+    label.textContent = 'Off';
+  }
+}
+
+async function renderSettingsNotifications() {
+  if (currentUser.email === ADMIN_EMAIL) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  const row = document.getElementById('stg-notif-row');
+  if (row) row.style.display = 'flex';
+  const reg = await navigator.serviceWorker.register('/sw.js');
+  const sub = await reg.pushManager.getSubscription();
+  const isOn = !!sub;
+  document.getElementById('stg-notif-toggle').checked = isOn;
+  document.getElementById('stg-notif-label').textContent = isOn ? 'On' : 'Off';
+}
+
+
 async function renderSettingsSubscription() {
   if (currentUser.email === ADMIN_EMAIL) return;
 
@@ -2149,6 +2196,7 @@ async function renderUsersTab() {
             <button class="admin-btn" style="border-color:#6b7280;color:#6b7280" onclick="markUserExpired('${p.id}')">⏱ Expire</button>
             <button class="admin-btn block" onclick="setUserStatus('${p.id}','blocked',false)">${st==='blocked'?'✓ Unblock':'✕ Block'}</button>
             <button class="admin-btn block" style="border-color:#dc2626;color:#dc2626" onclick="deleteUser('${p.id}','${(p.name||'').replace(/'/g,"\\'")}')">🗑 Delete</button>
+            ${p.push_subscription ? `<button class="admin-btn" style="border-color:#7c3aed;color:#7c3aed" onclick="adminSendPush('${p.id}','${(p.name||'Unknown').replace(/'/g,"\\'")}')">🔔 Push</button>` : ''}
           </div>
         </div>
       </div>
@@ -2224,6 +2272,62 @@ async function renewUserForever(userId) {
   toast('Set to active forever ♾', 'success');
   if (activeBillingTab === 'subs') renderSubscriptionsTable();
   else renderUsersTab();
+}
+
+async function adminTestPushSelf() {
+  const { data: profile } = await sb.from('profiles').select('push_subscription').eq('id', currentUser.id).single();
+  if (!profile?.push_subscription) {
+    toast('No push subscription — go to Settings and enable Trip Notifications first', 'error');
+    return;
+  }
+  const { error } = await sb.functions.invoke('send-push', {
+    body: {
+      subscription: profile.push_subscription,
+      title: '🔔 Test Notification',
+      body: 'Rider Manager push notifications are working!',
+      tag: 'admin-test'
+    }
+  });
+  if (error) { toast('Push failed: ' + error.message, 'error'); return; }
+  toast('Test push sent!', 'success');
+}
+
+async function adminSendPush(userId, name) {
+  const now = new Date();
+  const myt = new Date(now.getTime() + 8*60*60*1000);
+  const today = myt.toISOString().split('T')[0];
+  const tomorrow = new Date(myt.getTime() + 24*60*60*1000).toISOString().split('T')[0];
+
+  // Get user's trips for today and tomorrow
+  const { data: trips } = await sb.from('trips')
+    .select('date, time, guest_name, pickup_locations, dropoff_locations')
+    .eq('user_id', userId)
+    .in('date', [today, tomorrow])
+    .neq('status', 'cancelled')
+    .order('date').order('time');
+
+  if (!trips?.length) {
+    toast(`No trips today/tomorrow for ${name}`, 'error');
+    return;
+  }
+
+  // Get push subscription
+  const { data: profile } = await sb.from('profiles').select('push_subscription').eq('id', userId).single();
+  if (!profile?.push_subscription) { toast('No push subscription saved', 'error'); return; }
+
+  const tripLines = trips.map(t =>
+    `${t.date === today ? 'Today' : 'Tomorrow'} ${(t.time||'').slice(0,5)} — ${t.guest_name||'Guest'} · ${t.pickup_locations||''} → ${t.dropoff_locations||''}`
+  ).join('\n');
+
+  const title = `🚗 ${trips.length} trip${trips.length>1?'s':''} today/tomorrow`;
+  const body = tripLines.slice(0, 150);
+
+  const { error } = await sb.functions.invoke('send-push', {
+    body: { subscription: profile.push_subscription, title, body, tag: 'admin-test' }
+  });
+
+  if (error) { toast('Push failed: ' + error.message, 'error'); return; }
+  toast(`Push sent to ${name}!`, 'success');
 }
 
 async function deleteUser(userId, name) {
@@ -3717,6 +3821,64 @@ function dismissA2hs() {
   localStorage.setItem('a2hs-dismissed', '1');
 }
 
+// ── WEB PUSH NOTIFICATIONS ─────────────────────────────────────────────────
+const VAPID_PUBLIC_KEY = 'BMO_b66K25NYfzqXytOQGQhmZ1dqCXlDpwnvlAyUhB_tcWJ4j_mAwUwbMygRu-JfCvcJVUAojS_UOg8QhRqW2HI';
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return new Uint8Array([...rawData].map(c => c.charCodeAt(0)));
+}
+
+async function registerPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (!currentUser) return;
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+
+    // Always unsubscribe old subscription to force fresh one
+    const existing = await reg.pushManager.getSubscription();
+    if (existing) {
+      const endpoint = existing.endpoint || '';
+      // If old FCM format, force re-subscribe
+      if (endpoint.includes('/fcm/send/')) {
+        await existing.unsubscribe();
+      } else {
+        await savePushSubscription(existing);
+        return;
+      }
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return;
+
+    const subscription = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+    await savePushSubscription(subscription);
+    console.log('Push subscribed:', subscription.endpoint);
+    toast('🔔 Notifications enabled!', 'success');
+  } catch(e) { console.warn('Push registration error:', e); }
+}
+
+async function savePushSubscription(subscription) {
+  await sb.from('profiles').update({
+    push_subscription: JSON.parse(JSON.stringify(subscription)),
+    notification_enabled: true
+  }).eq('id', currentUser.id);
+}
+
+async function unsubscribePush() {
+  if (!('serviceWorker' in navigator)) return;
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription();
+  if (sub) await sub.unsubscribe();
+  await sb.from('profiles').update({ push_subscription: null, notification_enabled: false }).eq('id', currentUser.id);
+  toast('🔕 Notifications disabled', 'success');
+}
 
 sb.auth.onAuthStateChange(async (event, session) => {
   if (event === 'SIGNED_OUT') {
