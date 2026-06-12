@@ -2,6 +2,19 @@
 
 ---
 
+## v3.4 — 12 June 2026
+
+### 📱 PWA & Favicon
+- **Favicon** — car/people icon now shows in browser tab, bookmarks, and home screen
+- **Web manifest** (`manifest.json`) added — enables proper PWA installation on Android
+- **Add to Home Screen banner** — appears 4 seconds after login on mobile:
+  - **Android** — shows "Add to Home Screen" button (native install prompt) or manual instructions
+  - **iOS Safari** — shows "Tap Share (⬆) then Add to Home Screen"
+  - Already installed or desktop — never shows
+  - Dismissed once — stored in localStorage, never shows again
+
+---
+
 ## v3.3 — 12 June 2026
 
 ### 🗓️ Trip Creation Improvements
