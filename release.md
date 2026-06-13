@@ -2,6 +2,21 @@
 
 ---
 
+## v3.7 — 14 June 2026
+
+### 🚗 Trip Categories
+- **One Way** (default) — standard trip, no change
+- **Two Way** — enter return date/time (pre-filled to +2h); creates 2 trips automatically with pickup/dropoff reversed; validates return must be after outbound
+- **Hourly** — enter rate (RM/hour) + estimated hours; auto-calculates total; ⟳ Calculate button as fallback; on Complete, prompts actual hours and calculates final charge
+- Trip cards show badges: ↩ Two Way (blue) or ⏱ Hourly RM/h (purple)
+- Trip type always resets to One Way when opening a new trip
+
+### 🗓️ UX Improvements
+- Date and Time fields now on one row in trip form
+- Charge field shows placeholder instead of default 0
+
+---
+
 ## v3.6 — 13 June 2026
 
 ### 🕐 Malaysia Timezone (MYT) Fixes
