@@ -2279,15 +2279,12 @@ async function adminTestPushSelf() {
     toast('No push subscription — go to Settings and enable Trip Notifications first', 'error');
     return;
   }
-  const { error } = await sb.functions.invoke('send-push', {
-    body: {
-      subscription: profile.push_subscription,
-      title: '🔔 Test Notification',
-      body: 'Rider Manager push notifications are working!',
-      tag: 'admin-test'
-    }
+  const res1 = await fetch('https://gqavlaetwrvyugrqarcz.supabase.co/functions/v1/send-push', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxYXZsYWV0d3J2eXVncnFhcmN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNzA1NTcsImV4cCI6MjA5MTY0NjU1N30.QlEt3hevzpoEDy_RkCJsMW4Oyv9Jbp4-GuC_v-yUUXQ' },
+    body: JSON.stringify({ subscription: profile.push_subscription, title: '🔔 Test Notification', body: 'Rider Manager push notifications are working!', tag: 'admin-test' })
   });
-  if (error) { toast('Push failed: ' + error.message, 'error'); return; }
+  if (!res1.ok) { const e = await res1.json(); toast('Push failed: ' + (e.error||res1.status), 'error'); return; }
   toast('Test push sent!', 'success');
 }
 
@@ -2321,11 +2318,12 @@ async function adminSendPush(userId, name) {
   const title = `🚗 ${trips.length} trip${trips.length>1?'s':''} today/tomorrow`;
   const body = tripLines.slice(0, 150);
 
-  const { error } = await sb.functions.invoke('send-push', {
-    body: { subscription: profile.push_subscription, title, body, tag: 'admin-test' }
+  const pushRes = await fetch('https://gqavlaetwrvyugrqarcz.supabase.co/functions/v1/send-push', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxYXZsYWV0d3J2eXVncnFhcmN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNzA1NTcsImV4cCI6MjA5MTY0NjU1N30.QlEt3hevzpoEDy_RkCJsMW4Oyv9Jbp4-GuC_v-yUUXQ' },
+    body: JSON.stringify({ subscription: profile.push_subscription, title, body, tag: 'admin-test' })
   });
-
-  if (error) { toast('Push failed: ' + error.message, 'error'); return; }
+  if (!pushRes.ok) { const e = await pushRes.json(); toast('Push failed: ' + (e.error||pushRes.status), 'error'); return; }
   toast(`Push sent to ${name}!`, 'success');
 }
 
