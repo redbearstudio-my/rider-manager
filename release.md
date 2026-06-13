@@ -2,6 +2,22 @@
 
 ---
 
+## v3.6 — 13 June 2026
+
+### 🕐 Malaysia Timezone (MYT) Fixes
+- All date/time defaults now use MYT (UTC+8) instead of UTC
+- Affects: New Trip form, Edit Trip, New Expense, Payment modal, Busy Time form
+- Added `getMYTDate()` and `getMYTTime()` helper functions
+
+### 🔔 Push Notification Improvements
+- 🔔 Push button always visible in Users tab (greyed out if no subscription)
+- Notification shows real trip details: time, guest name, route, fare
+- Admin Users tab shows correct today/tomorrow trips in MYT
+- `send-push` Edge Function updated with full CORS headers (`x-client-info`, `apikey`)
+- Billing tabs made smaller to fit 3 tabs in one row on mobile
+
+---
+
 ## v3.5 — 13 June 2026
 
 ### 🔔 Web Push Notifications
