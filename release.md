@@ -2,6 +2,27 @@
 
 ---
 
+## v3.5 — 13 June 2026
+
+### 🔔 Web Push Notifications
+- Users can enable push notifications via **Settings → Trip Notifications** toggle
+- Admin can also enable notifications (same toggle in Settings)
+- Browser asks for permission on first enable
+- Subscription saved to `profiles.push_subscription` in Supabase
+- Auto re-subscribes on login; clears expired subscriptions
+- **Daily cron at 8am MYT** sends push for today's trips via Supabase Edge Function `send-push`
+- **Admin panel** — 🔔 Push button per user (Users tab) to send push for their today/tomorrow trips
+- **Admin panel** — 🔔 Send Test Push to Myself button for testing
+- Uses VAPID keys + `web-push` library in Deno Edge Function
+- Direct `fetch` call to avoid CORS `x-client-info` header issue
+
+### 📧 Daily Trip Email Reminder
+- Daily cron at 8am MYT sends email summary of today's trips
+- Table format: time, guest name/contact, route, fare
+- Sent via Resend to each user who has trips that day
+
+---
+
 ## v3.4 — 12 June 2026
 
 ### 📱 PWA & Favicon
