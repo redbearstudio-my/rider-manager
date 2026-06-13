@@ -1763,7 +1763,6 @@ async function toggleNotifications(enabled) {
 }
 
 async function renderSettingsNotifications() {
-  if (currentUser.email === ADMIN_EMAIL) return;
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
   const row = document.getElementById('stg-notif-row');
   if (row) row.style.display = 'flex';
