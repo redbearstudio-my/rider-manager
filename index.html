@@ -95,7 +95,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .admin-user-new{border-color:#7c3aed!important;background:#faf5ff!important}
 .admin-user-selected{border-color:var(--teal)!important;background:#f0fdfa!important}
 /* Billing */
-.billing-tabs{display:flex;gap:.375rem;margin-bottom:1.25rem}
+.trip-type-btn{flex:1;padding:.5rem .25rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:#fff;font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer;color:var(--muted);transition:all .2s;text-align:center}
+.trip-type-btn.active{background:var(--teal);border-color:var(--teal);color:#fff}
+.trip-type-btn:hover:not(.active){border-color:var(--teal);color:var(--teal)}
 .billing-tab{flex:1;padding:.5rem .25rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:#fff;font-family:inherit;font-size:.75rem;font-weight:600;cursor:pointer;color:var(--muted);transition:all .2s;text-align:center;white-space:nowrap}
 .billing-tab:hover{border-color:var(--teal);color:var(--teal)}
 .billing-tab.active{background:var(--teal);border-color:var(--teal);color:#fff;box-shadow:0 2px 8px rgba(14,116,144,.25)}
@@ -929,9 +931,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
       <!-- Form panel -->
       <div id="trip-form-panel">
-      <div class="form-row">
-        <div class="form-group"><label>Date *</label><input type="date" id="t-date"></div>
-        <div class="form-group"><label>Time *</label><input type="time" id="t-time"></div>
+      <div class="form-row" style="display:flex;gap:.5rem;flex-wrap:nowrap">
+        <div class="form-group" style="flex:1.4"><label>Date *</label><input type="date" id="t-date"></div>
+        <div class="form-group" style="flex:1"><label>Time *</label><input type="time" id="t-time"></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Guest Name</label><input type="text" id="t-name" placeholder="Guest name"></div>
@@ -951,7 +953,38 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <div id="t-dropoff-list"></div>
         <button type="button" class="loc-add-btn" onclick="addLocField('t-dropoff-list')">+ Add Dropoff Location</button>
       </div>
-      <div class="form-group"><label>Charge (RM) *</label><input type="number" id="t-charge" value="0" min="0" step="0.01"></div>
+      <div class="form-group">
+        <label>Trip Type</label>
+        <div style="display:flex;gap:.5rem">
+          <button type="button" class="trip-type-btn active" id="tt-one_way" onclick="setTripType('one_way')">🔀 One Way</button>
+          <button type="button" class="trip-type-btn" id="tt-two_way" onclick="setTripType('two_way')">↩ Two Way</button>
+          <button type="button" class="trip-type-btn" id="tt-hourly" onclick="setTripType('hourly')">⏱ Hourly</button>
+        </div>
+        <input type="hidden" id="t-trip-type" value="one_way">
+      </div>
+
+      <!-- Two Way: return date/time -->
+      <div id="t-return-section" style="display:none;background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:var(--radius-sm);padding:.875rem;margin-bottom:.5rem">
+        <div style="font-size:.8rem;font-weight:700;color:#0369a1;margin-bottom:.625rem">↩ Return Trip Details</div>
+        <div class="form-row">
+          <div class="form-group" style="margin-bottom:0"><label>Return Date *</label><input type="date" id="t-return-date"></div>
+          <div class="form-group" style="margin-bottom:0"><label>Return Time *</label><input type="time" id="t-return-time"></div>
+        </div>
+        <div style="font-size:.75rem;color:#0369a1;margin-top:.5rem">A return trip will be created automatically with pickup/dropoff reversed.</div>
+      </div>
+
+      <!-- Hourly: rate and estimated hours -->
+      <div id="t-hourly-section" style="display:none;background:#fdf4ff;border:1.5px solid #e9d5ff;border-radius:var(--radius-sm);padding:.875rem;margin-bottom:.5rem">
+        <div style="font-size:.8rem;font-weight:700;color:#7c3aed;margin-bottom:.625rem">⏱ Hourly Rate Details</div>
+        <div class="form-row">
+          <div class="form-group" style="margin-bottom:0"><label>Rate (RM/hour) *</label><input type="number" id="t-hourly-rate" min="0" step="1" placeholder="50" oninput="updateHourlyPreview()" onchange="updateHourlyPreview()" onblur="updateHourlyPreview()" onkeyup="updateHourlyPreview()"></div>
+          <div class="form-group" style="margin-bottom:0"><label>Est. Hours</label><input type="number" id="t-estimated-hours" min="0.5" step="0.5" value="4" oninput="updateHourlyPreview()" onchange="updateHourlyPreview()" onblur="updateHourlyPreview()" onkeyup="updateHourlyPreview()"></div>
+        </div>
+        <div id="t-hourly-preview" style="font-size:.85rem;color:#7c3aed;margin-top:.5rem;font-weight:600"></div>
+        <button type="button" onclick="updateHourlyPreview()" style="width:100%;margin-top:.5rem;padding:.5rem;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:.8rem;font-weight:600;cursor:pointer">⟳ Calculate Total</button>
+      </div>
+
+      <div class="form-group"><label>Charge (RM) *</label><input type="number" id="t-charge" min="0" step="0.01" placeholder="0.00"></div>
       <div class="form-group"><label>Notes (Optional)</label><textarea id="t-notes" placeholder="e.g. This is VIP"></textarea></div>
       <div class="stepper-group">
         <div class="stepper-group-label" onclick="toggleSection('pax-section','pax-chevron')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none">
@@ -2520,6 +2553,8 @@ function tripCard(t) {
       <div>
         <div class="trip-date">${dateStr} • ${t.time}</div>
         <div class="trip-name">${t.guest_name || 'Guest'}</div>
+        ${t.trip_type === 'two_way' ? '<span style="font-size:.7rem;background:#dbeafe;color:#1d4ed8;padding:.1rem .4rem;border-radius:10px;font-weight:600;margin-left:.25rem">↩ Two Way</span>' : ''}
+        ${t.trip_type === 'hourly' ? `<span style="font-size:.7rem;background:#f3e8ff;color:#7c3aed;padding:.1rem .4rem;border-radius:10px;font-weight:600;margin-left:.25rem">⏱ Hourly${t.hourly_rate ? ' RM'+t.hourly_rate+'/h' : ''}</span>` : ''}
         <div style="display:flex;flex-direction:column;gap:.3rem;margin-top:.2rem">
           ${(t.guest_contact||'').split(' | ').filter(Boolean).map(contact => {
             let n = contact.replace(/[^0-9]/g,'');
@@ -2658,7 +2693,55 @@ function getLocFields(containerId) {
 }
 
 // ── TRIP CRUD ──────────────────────────────────────────────────────────────
-// ── TRIP PASTE / AI PARSE ──────────────────────────────────────────────────
+// ── TRIP TYPE ──────────────────────────────────────────────────────────────
+function setTripType(type) {
+  document.getElementById('t-trip-type').value = type;
+  ['one_way','two_way','hourly'].forEach(t => {
+    document.getElementById(`tt-${t}`).classList.toggle('active', t === type);
+  });
+  document.getElementById('t-return-section').style.display = type === 'two_way' ? '' : 'none';
+  document.getElementById('t-hourly-section').style.display = type === 'hourly' ? '' : 'none';
+  if (type === 'two_way') {
+    const date = document.getElementById('t-date').value || getMYTDate();
+    const time = document.getElementById('t-time').value || getMYTTime();
+    const returnDate = new Date(`${date}T${time || '00:00'}`);
+    returnDate.setHours(returnDate.getHours() + 2);
+    document.getElementById('t-return-date').value = returnDate.toISOString().split('T')[0];
+    document.getElementById('t-return-time').value = returnDate.toTimeString().slice(0, 5);
+  }
+  // Clear any existing poll
+  if (window._hourlyPollInterval) { clearInterval(window._hourlyPollInterval); window._hourlyPollInterval = null; }
+  if (type === 'hourly') {
+    // Poll every 300ms to catch mobile keyboard input reliably
+    let lastRate = '', lastHours = '';
+    window._hourlyPollInterval = setInterval(() => {
+      const rate = document.getElementById('t-hourly-rate')?.value || '';
+      const hours = document.getElementById('t-estimated-hours')?.value || '';
+      if (rate !== lastRate || hours !== lastHours) {
+        lastRate = rate; lastHours = hours;
+        updateHourlyPreview();
+      }
+    }, 300);
+  }
+}
+
+function updateHourlyPreview() {
+  const rateVal = document.getElementById('t-hourly-rate')?.value;
+  const hoursVal = document.getElementById('t-estimated-hours')?.value;
+  const rate = parseFloat(rateVal) || 0;
+  const hours = parseFloat(hoursVal) || 4;
+  const preview = document.getElementById('t-hourly-preview');
+  const chargeEl = document.getElementById('t-charge');
+  if (rate > 0 && chargeEl) {
+    const est = (rate * hours).toFixed(2);
+    if (preview) preview.textContent = `Estimated: RM ${est} (${hours}h × RM ${rate}/h)`;
+    chargeEl.value = est;
+  } else if (preview) {
+    preview.textContent = '';
+  }
+}
+
+
 function switchTripTab(tab) {
   document.getElementById('trip-tab-form').classList.toggle('active', tab === 'form');
   document.getElementById('trip-tab-paste').classList.toggle('active', tab === 'paste');
@@ -2835,7 +2918,21 @@ function openTripModal(trip = null) {
   setStepperVal('t-big', isEdit ? (trip.big_luggage || 0) : 0);
   updatePaxSummary();
   updateLugSummary();
-  document.getElementById('t-charge').value = isEdit ? trip.charge : 0;
+  // Trip type — always default to one_way for new trips
+  const tripType = isEdit ? (trip.trip_type || 'one_way') : 'one_way';
+  setTripType(tripType);
+  // Set hourly fields BEFORE calling updateHourlyPreview
+  if (isEdit && trip.hourly_rate) document.getElementById('t-hourly-rate').value = trip.hourly_rate;
+  else document.getElementById('t-hourly-rate').value = '';
+  if (isEdit && trip.estimated_hours) document.getElementById('t-estimated-hours').value = trip.estimated_hours;
+  else document.getElementById('t-estimated-hours').value = 4;
+  document.getElementById('t-hourly-preview').textContent = '';
+  // For hourly trips, recalculate charge after values are set; otherwise use saved value
+  if (tripType === 'hourly') {
+    updateHourlyPreview();
+  } else {
+    document.getElementById('t-charge').value = isEdit ? trip.charge : '';
+  }
   document.getElementById('t-status').value = isEdit ? trip.status : 'pending';
   document.getElementById('t-notes').value = isEdit ? (trip.notes || '') : '';
   document.getElementById('t-paid').checked = isEdit ? trip.paid : false;
@@ -2872,9 +2969,22 @@ async function saveTrip() {
     cancellation_reason: status === 'cancelled' ? document.getElementById('t-cancel-reason').value.trim() : '',
     paid: document.getElementById('t-paid').checked,
     notes: document.getElementById('t-notes').value.trim(),
+    trip_type: document.getElementById('t-trip-type').value || 'one_way',
+    hourly_rate: document.getElementById('t-trip-type').value === 'hourly' ? (parseFloat(document.getElementById('t-hourly-rate').value) || null) : null,
+    estimated_hours: document.getElementById('t-trip-type').value === 'hourly' ? (parseFloat(document.getElementById('t-estimated-hours').value) || 4) : null,
   };
   if (!data.date || !data.time || !data.pickup_locations.trim() || !data.dropoff_locations.trim()) {
     return toast('Please fill required fields (date, time, pickup, dropoff)', 'error');
+  }
+
+  // Two way: validate return date/time is after outbound
+  if (!id && data.trip_type === 'two_way') {
+    const returnDate = document.getElementById('t-return-date').value;
+    const returnTime = document.getElementById('t-return-time').value;
+    if (!returnDate || !returnTime) return toast('Please enter return date and time', 'error');
+    const outbound = new Date(`${data.date}T${data.time}`);
+    const returnDT = new Date(`${returnDate}T${returnTime}`);
+    if (returnDT <= outbound) return toast('Return date/time must be after the outbound trip', 'error');
   }
 
   // Conflict detection — check for existing trip at same date & time (skip when editing same trip)
@@ -2898,6 +3008,34 @@ async function saveTrip() {
     ({ error: err } = await sb.from('trips').insert(data));
   }
   if (err) return toast(err.message, 'error');
+
+  // Two way: create return trip with reversed pickup/dropoff
+  if (!id && data.trip_type === 'two_way') {
+    const returnDate = document.getElementById('t-return-date').value;
+    const returnTime = document.getElementById('t-return-time').value;
+    if (!returnDate || !returnTime) {
+      toast('Return date/time missing — only outbound trip created', 'error');
+    } else {
+      const returnData = {
+        ...data,
+        date: returnDate,
+        time: returnTime,
+        pickup_locations: data.dropoff_locations,
+        dropoff_locations: data.pickup_locations,
+        notes: (data.notes ? data.notes + ' · ' : '') + 'Return trip',
+      };
+      const { error: retErr } = await sb.from('trips').insert(returnData);
+      if (retErr) {
+        toast('Outbound saved. Return trip failed: ' + retErr.message, 'error');
+      } else {
+        closeModal('trip-modal');
+        toast('Two-way trip created! (outbound + return)', 'success');
+        await loadAll();
+        return;
+      }
+    }
+  }
+
   closeModal('trip-modal');
   toast(id ? 'Trip updated' : 'Trip created', 'success');
   await loadAll();
@@ -2907,6 +3045,33 @@ function editTrip(id) { openTripModal(trips.find(t => t.id === id)); }
 
 async function markComplete(id) {
   if (guardReadOnly()) return;
+  const trip = trips.find(t => t.id === id);
+
+  // Hourly trip — prompt for actual hours then calculate final charge
+  if (trip?.trip_type === 'hourly' && trip.hourly_rate) {
+    const estimated = trip.estimated_hours || 4;
+    const rate = trip.hourly_rate;
+    const actualInput = prompt(
+      `⏱ Hourly Trip Complete\n\nRate: RM ${rate}/hour\nEstimated: ${estimated} hours (RM ${(rate * estimated).toFixed(2)})\n\nEnter ACTUAL hours used:`,
+      estimated
+    );
+    if (actualInput === null) return; // cancelled
+    const actual = parseFloat(actualInput);
+    if (isNaN(actual) || actual <= 0) return toast('Invalid hours entered', 'error');
+    const finalCharge = (rate * actual).toFixed(2);
+    const confirmed = confirm(`Final amount: RM ${finalCharge}\n(${actual} hours × RM ${rate}/hour)\n\nConfirm and mark as completed?`);
+    if (!confirmed) return;
+    await sb.from('trips').update({
+      status: 'completed',
+      completed: true,
+      charge: parseFloat(finalCharge),
+      estimated_hours: actual,
+    }).eq('id', id);
+    toast(`Completed! Final charge: RM ${finalCharge}`, 'success');
+    await loadAll();
+    return;
+  }
+
   await sb.from('trips').update({ status: 'completed', completed: true }).eq('id', id);
   toast('Marked as completed', 'success'); await loadAll();
 }
@@ -3763,7 +3928,13 @@ function importExcel(event) {
 
 // ── MODAL HELPERS ──────────────────────────────────────────────────────────
 function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  if (id === 'trip-modal' && window._hourlyPollInterval) {
+    clearInterval(window._hourlyPollInterval);
+    window._hourlyPollInterval = null;
+  }
+}
 
 // Returns today's date in YYYY-MM-DD format using Malaysia Time (UTC+8)
 function getMYTDate(offsetDays = 0) {
