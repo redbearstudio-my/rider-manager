@@ -95,8 +95,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .admin-user-new{border-color:#7c3aed!important;background:#faf5ff!important}
 .admin-user-selected{border-color:var(--teal)!important;background:#f0fdfa!important}
 /* Billing */
-.billing-tabs{display:flex;gap:.5rem;margin-bottom:1.25rem}
-.billing-tab{flex:1;padding:.65rem .5rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:#fff;font-family:inherit;font-size:.85rem;font-weight:600;cursor:pointer;color:var(--muted);transition:all .2s;text-align:center}
+.billing-tabs{display:flex;gap:.375rem;margin-bottom:1.25rem}
+.billing-tab{flex:1;padding:.5rem .25rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:#fff;font-family:inherit;font-size:.75rem;font-weight:600;cursor:pointer;color:var(--muted);transition:all .2s;text-align:center;white-space:nowrap}
 .billing-tab:hover{border-color:var(--teal);color:var(--teal)}
 .billing-tab.active{background:var(--teal);border-color:var(--teal);color:#fff;box-shadow:0 2px 8px rgba(14,116,144,.25)}
 .subs-table{width:100%;border-collapse:collapse;font-size:.85rem}
@@ -1950,7 +1950,7 @@ function openPaymentModal(userId, name, email, currentExpiry) {
   document.getElementById('payment-current-expiry').value = currentExpiry;
   document.getElementById('payment-user-info').innerHTML =
     `<strong>${name}</strong><br><span style="color:var(--muted)">${email}</span>`;
-  document.getElementById('payment-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('payment-date').value = getMYTDate();
   document.getElementById('payment-months').value = '1';
   document.getElementById('payment-amount').value = appSettings.subscription_price || '30';
   document.getElementById('payment-notes').value = '';
@@ -2195,7 +2195,10 @@ async function renderUsersTab() {
             <button class="admin-btn" style="border-color:#6b7280;color:#6b7280" onclick="markUserExpired('${p.id}')">⏱ Expire</button>
             <button class="admin-btn block" onclick="setUserStatus('${p.id}','blocked',false)">${st==='blocked'?'✓ Unblock':'✕ Block'}</button>
             <button class="admin-btn block" style="border-color:#dc2626;color:#dc2626" onclick="deleteUser('${p.id}','${(p.name||'').replace(/'/g,"\\'")}')">🗑 Delete</button>
-            ${p.push_subscription ? `<button class="admin-btn" style="border-color:#7c3aed;color:#7c3aed" onclick="adminSendPush('${p.id}','${(p.name||'Unknown').replace(/'/g,"\\'")}')">🔔 Push</button>` : ''}
+            ${p.push_subscription
+              ? `<button class="admin-btn" style="border-color:#7c3aed;color:#7c3aed" onclick="adminSendPush('${p.id}','${(p.name||'Unknown').replace(/'/g,"\\'")}')">🔔 Push</button>`
+              : `<button class="admin-btn" style="border-color:#d1d5db;color:#d1d5db;cursor:not-allowed" title="User has not enabled push notifications">🔔 Push</button>`
+            }
           </div>
         </div>
       </div>
@@ -2290,41 +2293,49 @@ async function adminTestPushSelf() {
 
 async function adminSendPush(userId, name) {
   const now = new Date();
-  const myt = new Date(now.getTime() + 8*60*60*1000);
+  const mytOffset = 8 * 60;
+  const localOffset = now.getTimezoneOffset();
+  const myt = new Date(now.getTime() + (mytOffset + localOffset) * 60000);
   const today = myt.toISOString().split('T')[0];
   const tomorrow = new Date(myt.getTime() + 24*60*60*1000).toISOString().split('T')[0];
+  console.log('Push for:', name, 'today:', today, 'tomorrow:', tomorrow);
 
-  // Get user's trips for today and tomorrow
-  const { data: trips } = await sb.from('trips')
-    .select('date, time, guest_name, pickup_locations, dropoff_locations')
+  const { data: userTrips } = await sb.from('trips')
+    .select('date, time, guest_name, pickup_locations, dropoff_locations, charge')
     .eq('user_id', userId)
     .in('date', [today, tomorrow])
     .neq('status', 'cancelled')
     .order('date').order('time');
 
-  if (!trips?.length) {
-    toast(`No trips today/tomorrow for ${name}`, 'error');
-    return;
-  }
+  console.log('Trips found:', userTrips?.length);
 
-  // Get push subscription
   const { data: profile } = await sb.from('profiles').select('push_subscription').eq('id', userId).single();
-  if (!profile?.push_subscription) { toast('No push subscription saved', 'error'); return; }
+  if (!profile?.push_subscription) { toast('User has not enabled push notifications', 'error'); return; }
 
-  const tripLines = trips.map(t =>
-    `${t.date === today ? 'Today' : 'Tomorrow'} ${(t.time||'').slice(0,5)} — ${t.guest_name||'Guest'} · ${t.pickup_locations||''} → ${t.dropoff_locations||''}`
-  ).join('\n');
-
-  const title = `🚗 ${trips.length} trip${trips.length>1?'s':''} today/tomorrow`;
-  const body = tripLines.slice(0, 150);
+  let title, body;
+  if (!userTrips?.length) {
+    title = '🚗 Rider Manager';
+    body = 'No trips on ' + today + ' or ' + tomorrow;
+  } else {
+    const first = userTrips[0];
+    const isToday = first.date === today;
+    const time = (first.time||'').slice(0,5);
+    const guest = first.guest_name || 'Guest';
+    const from = first.pickup_locations || '';
+    const to = first.dropoff_locations || '';
+    const fare = first.charge ? 'RM ' + parseFloat(first.charge).toFixed(0) : '';
+    title = '🚗 ' + userTrips.length + ' trip' + (userTrips.length>1?'s':'') + ' ' + (isToday ? 'today' : 'tomorrow');
+    body = time + ' · ' + guest + '\n' + from + (to ? ' → '+to : '') + (fare ? ' · '+fare : '');
+    if (userTrips.length > 1) body += '\n+' + (userTrips.length-1) + ' more trip' + (userTrips.length>2?'s':'');
+  }
 
   const pushRes = await fetch('https://gqavlaetwrvyugrqarcz.supabase.co/functions/v1/send-push', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxYXZsYWV0d3J2eXVncnFhcmN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNzA1NTcsImV4cCI6MjA5MTY0NjU1N30.QlEt3hevzpoEDy_RkCJsMW4Oyv9Jbp4-GuC_v-yUUXQ' },
-    body: JSON.stringify({ subscription: profile.push_subscription, title, body, tag: 'admin-test' })
+    body: JSON.stringify({ subscription: profile.push_subscription, title, body, tag: 'trip-reminder' })
   });
   if (!pushRes.ok) { const e = await pushRes.json(); toast('Push failed: ' + (e.error||pushRes.status), 'error'); return; }
-  toast(`Push sent to ${name}!`, 'success');
+  toast('Push sent to ' + name + '! (' + (userTrips?.length||0) + ' trips)', 'success');
 }
 
 async function deleteUser(userId, name) {
@@ -2803,10 +2814,10 @@ function openTripModal(trip = null) {
   document.getElementById('pax-chevron').style.transform = '';
   document.getElementById('lug-chevron').style.transform = '';
   switchTripTab('form');
-  const today = new Date().toISOString().split('T')[0];
-  const now = new Date().toTimeString().slice(0,5);
+  const today = getMYTDate();
+  const nowTime = getMYTTime();
   document.getElementById('t-date').value = isEdit ? trip.date : today;
-  document.getElementById('t-time').value = isEdit ? trip.time.slice(0,5) : now;
+  document.getElementById('t-time').value = isEdit ? trip.time.slice(0,5) : nowTime;
   document.getElementById('t-name').value = isEdit ? (trip.guest_name || '') : '';
   document.getElementById('t-contact-list').innerHTML = '';
   if (isEdit) {
@@ -2996,7 +3007,7 @@ function openBusyModal(busy = null) {
   if (guardReadOnly()) return;
   document.getElementById('busy-modal-title').textContent = busy ? 'Edit Busy Time' : 'Add Busy Time';
   document.getElementById('busy-id-edit').value = busy ? busy.id : '';
-  document.getElementById('b-date').value = busy ? busy.date : (calSelected || new Date().toISOString().split('T')[0]);
+  document.getElementById('b-date').value = busy ? busy.date : (calSelected || getMYTDate());
   document.getElementById('b-start').value = busy ? busy.start_time.slice(0,5) : '00:00';
   document.getElementById('b-end').value = busy ? busy.end_time.slice(0,5) : '23:59';
   document.getElementById('b-reason').value = busy ? (busy.reason || '') : '';
@@ -3123,7 +3134,7 @@ function openExpenseModal(exp = null) {
   if (guardReadOnly()) return;
   document.getElementById('exp-modal-title').textContent = exp ? 'Edit Expense' : 'New Expense';
   document.getElementById('exp-id-edit').value = exp ? exp.id : '';
-  document.getElementById('e-date').value = exp ? exp.date : new Date().toISOString().split('T')[0];
+  document.getElementById('e-date').value = exp ? exp.date : getMYTDate();
   document.getElementById('e-type').value = exp ? exp.type : 'Petrol';
   document.getElementById('e-amount').value = exp ? exp.amount : 0;
   document.getElementById('e-location').value = exp ? (exp.location || '') : '';
@@ -3753,6 +3764,20 @@ function importExcel(event) {
 // ── MODAL HELPERS ──────────────────────────────────────────────────────────
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// Returns today's date in YYYY-MM-DD format using Malaysia Time (UTC+8)
+function getMYTDate(offsetDays = 0) {
+  const now = new Date();
+  const myt = new Date(now.getTime() + (8 * 60 + now.getTimezoneOffset()) * 60000);
+  if (offsetDays) myt.setDate(myt.getDate() + offsetDays);
+  return myt.toISOString().split('T')[0];
+}
+
+function getMYTTime() {
+  const now = new Date();
+  const myt = new Date(now.getTime() + (8 * 60 + now.getTimezoneOffset()) * 60000);
+  return myt.toTimeString().slice(0, 5);
+}
 document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
 });
