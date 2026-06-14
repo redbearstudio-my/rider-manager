@@ -2,6 +2,21 @@
 
 ---
 
+## v4.0 — 14 June 2026
+
+### 🔔 Notifications Restructured
+- New **Notifications** section in Settings (always visible, no push required first)
+- **Daily summary at** — native time picker (e.g. 08:00) + Save
+- **Before trip** — h + min inputs + Save (stored as total minutes)
+- **Receive via** section:
+  - 🔔 Push Notification toggle
+  - 📧 Email toggle
+- Both timing settings always shown; delivery method chosen independently
+- pg_cron runs every 5 min, fires when current MYT time matches user's setting (±5 min)
+- Before-trip notification sends only the specific upcoming trip details
+
+---
+
 ## v3.9 — 14 June 2026
 
 ### 🔔 Pre-Trip Push Notifications
