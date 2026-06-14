@@ -736,6 +736,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
             </label>
           </div>
         </div>
+        <div class="stg-row" id="stg-notif-before-row" style="display:none">
+          <div class="stg-row-left">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Notify before trip
+          </div>
+          <div style="display:flex;align-items:center;gap:.35rem">
+            <input type="number" id="stg-notify-hrs" min="0" max="23" value="2"
+              style="width:46px;padding:.3rem .4rem;border:1.5px solid var(--border);border-radius:8px;font-size:.875rem;text-align:center">
+            <span style="font-size:.78rem;color:var(--muted)">h</span>
+            <input type="number" id="stg-notify-mins" min="0" max="59" value="0"
+              style="width:46px;padding:.3rem .4rem;border:1.5px solid var(--border);border-radius:8px;font-size:.875rem;text-align:center">
+            <span style="font-size:.78rem;color:var(--muted)">min</span>
+            <button type="button" onclick="saveNotifyBefore()" style="padding:.3rem .6rem;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer">Save</button>
+          </div>
+        </div>
         <div class="stg-row">
           <div class="stg-row-left">
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -1826,20 +1841,23 @@ function openSettingsModal(type) {
 
 async function toggleNotifications(enabled) {
   const label = document.getElementById('stg-notif-label');
+  const beforeRow = document.getElementById('stg-notif-before-row');
   if (enabled) {
     await registerPush();
-    // Check if actually enabled after permission
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();
     if (!sub) {
       document.getElementById('stg-notif-toggle').checked = false;
       label.textContent = 'Off';
+      if (beforeRow) beforeRow.style.display = 'none';
       return;
     }
     label.textContent = 'On';
+    if (beforeRow) beforeRow.style.display = 'flex';
   } else {
     await unsubscribePush();
     label.textContent = 'Off';
+    if (beforeRow) beforeRow.style.display = 'none';
   }
 }
 
@@ -1852,6 +1870,34 @@ async function renderSettingsNotifications() {
   const isOn = !!sub;
   document.getElementById('stg-notif-toggle').checked = isOn;
   document.getElementById('stg-notif-label').textContent = isOn ? 'On' : 'Off';
+  // Show hours row only when notifications are on
+  const beforeRow = document.getElementById('stg-notif-before-row');
+  if (beforeRow) beforeRow.style.display = isOn ? 'flex' : 'none';
+  // Load saved notify before minutes
+  const totalMins = userProfile?.notify_before_minutes ?? 120;
+  const hrsEl = document.getElementById('stg-notify-hrs');
+  const minsEl = document.getElementById('stg-notify-mins');
+  if (hrsEl) hrsEl.value = Math.floor(totalMins / 60);
+  if (minsEl) minsEl.value = totalMins % 60;
+}
+
+async function saveNotifyBefore() {
+  const hrs = parseInt(document.getElementById('stg-notify-hrs').value) || 0;
+  const mins = parseInt(document.getElementById('stg-notify-mins').value) || 0;
+  const totalMins = (hrs * 60) + mins;
+  if (totalMins < 5) { toast('Minimum 5 minutes', 'error'); return; }
+  console.log('saveNotifyBefore:', totalMins, 'mins, user:', currentUser?.id);
+  try {
+    const { data, error } = await sb.from('profiles').update({ notify_before_minutes: totalMins }).eq('id', currentUser.id).select();
+    console.log('saveNotifyBefore result:', data, error);
+    if (error) { toast('Save failed: ' + error.message, 'error'); return; }
+    if (userProfile) userProfile.notify_before_minutes = totalMins;
+    const label = hrs > 0 ? `${hrs}h${mins > 0 ? ' '+mins+'m' : ''}` : `${mins}m`;
+    toast(`Will notify ${label} before each trip ✓`, 'success');
+  } catch(e) {
+    console.error('saveNotifyBefore error:', e);
+    toast('Save failed: ' + e.message, 'error');
+  }
 }
 
 
