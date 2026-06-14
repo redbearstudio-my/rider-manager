@@ -721,46 +721,27 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       </div>
 
       <!-- Notifications section -->
-      <div class="stg-group-label" id="stg-notif-section" style="display:none">Notifications</div>
-      <div class="stg-group" id="stg-notif-group" style="display:none">
+      <div class="stg-group-label">Notifications</div>
+      <div class="stg-group">
 
-        <!-- Push toggle -->
+        <!-- Daily summary time - always visible -->
         <div class="stg-row">
           <div class="stg-row-left">
-            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-            Push Notifications
-          </div>
-          <div style="display:flex;align-items:center;gap:.5rem">
-            <span id="stg-notif-label" style="font-size:.78rem;color:var(--muted)">Off</span>
-            <label class="toggle" style="margin:0">
-              <input type="checkbox" id="stg-notif-toggle" onchange="toggleNotifications(this.checked)">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Daily summary time -->
-        <div class="stg-row" id="stg-daily-time-row" style="display:none">
-          <div class="stg-row-left">
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            Daily trip summary
+            Daily summary at
           </div>
           <div style="display:flex;align-items:center;gap:.35rem">
-            <input type="number" id="stg-daily-h" min="0" max="23" value="8"
-              style="width:46px;padding:.3rem .4rem;border:1.5px solid var(--border);border-radius:8px;font-size:.875rem;text-align:center">
-            <span style="font-size:.78rem;color:var(--muted)">h</span>
-            <input type="number" id="stg-daily-m" min="0" max="59" value="0"
-              style="width:46px;padding:.3rem .4rem;border:1.5px solid var(--border);border-radius:8px;font-size:.875rem;text-align:center">
-            <span style="font-size:.78rem;color:var(--muted)">min</span>
+            <input type="time" id="stg-daily-time"
+              style="padding:.3rem .4rem;border:1.5px solid var(--border);border-radius:8px;font-size:.875rem">
             <button type="button" onclick="saveDailyTime()" style="padding:.3rem .6rem;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer">Save</button>
           </div>
         </div>
 
-        <!-- Before trip reminder -->
-        <div class="stg-row" id="stg-notif-before-row" style="display:none">
+        <!-- Before trip reminder - always visible -->
+        <div class="stg-row">
           <div class="stg-row-left">
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            Before trip reminder
+            Before trip
           </div>
           <div style="display:flex;align-items:center;gap:.35rem">
             <input type="number" id="stg-notify-hrs" min="0" max="23" value="2"
@@ -773,11 +754,29 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
           </div>
         </div>
 
-        <!-- Email reminders toggle -->
+        <!-- Divider -->
+        <div style="padding:.5rem 1rem .25rem;font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Receive via</div>
+
+        <!-- Push toggle -->
+        <div class="stg-row" id="stg-notif-row">
+          <div class="stg-row-left">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+            Push Notification
+          </div>
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <span id="stg-notif-label" style="font-size:.78rem;color:var(--muted)">Off</span>
+            <label class="toggle" style="margin:0">
+              <input type="checkbox" id="stg-notif-toggle" onchange="toggleNotifications(this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Email toggle -->
         <div class="stg-row">
           <div class="stg-row-left">
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            Email Reminders
+            Email
           </div>
           <div style="display:flex;align-items:center;gap:.5rem">
             <span id="stg-email-label" style="font-size:.78rem;color:var(--muted)">Off</span>
@@ -787,7 +786,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
             </label>
           </div>
         </div>
-        <div style="padding:.25rem 1rem .5rem;font-size:.75rem;color:var(--muted)">Daily summary + before-trip email sent to your account email</div>
 
       </div>
 
@@ -1884,7 +1882,6 @@ function openSettingsModal(type) {
 
 async function toggleNotifications(enabled) {
   const label = document.getElementById('stg-notif-label');
-  const beforeRow = document.getElementById('stg-notif-before-row');
   if (enabled) {
     await registerPush();
     const reg = await navigator.serviceWorker.ready;
@@ -1892,57 +1889,48 @@ async function toggleNotifications(enabled) {
     if (!sub) {
       document.getElementById('stg-notif-toggle').checked = false;
       label.textContent = 'Off';
-      if (beforeRow) beforeRow.style.display = 'none';
       return;
     }
     label.textContent = 'On';
-    if (beforeRow) beforeRow.style.display = 'flex';
-    document.getElementById('stg-daily-time-row').style.display = 'flex';
   } else {
     await unsubscribePush();
     label.textContent = 'Off';
-    if (beforeRow) beforeRow.style.display = 'none';
-    document.getElementById('stg-daily-time-row').style.display = 'none';
   }
 }
 
 async function renderSettingsNotifications() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-
-  document.getElementById('stg-notif-section').style.display = '';
-  document.getElementById('stg-notif-group').style.display = '';
-
-  const reg = await navigator.serviceWorker.register('/sw.js');
-  const sub = await reg.pushManager.getSubscription();
-  const isOn = !!sub;
-  document.getElementById('stg-notif-toggle').checked = isOn;
-  document.getElementById('stg-notif-label').textContent = isOn ? 'On' : 'Off';
-  document.getElementById('stg-daily-time-row').style.display = isOn ? 'flex' : 'none';
-  document.getElementById('stg-notif-before-row').style.display = isOn ? 'flex' : 'none';
-
+  // Load saved timing values
   const totalMins = userProfile?.notify_before_minutes ?? 120;
   document.getElementById('stg-notify-hrs').value = Math.floor(totalMins / 60);
   document.getElementById('stg-notify-mins').value = totalMins % 60;
 
   const dailyTime = userProfile?.daily_notify_time || '08:00';
-  const [dh, dm] = dailyTime.split(':');
-  document.getElementById('stg-daily-h').value = parseInt(dh) || 8;
-  document.getElementById('stg-daily-m').value = parseInt(dm) || 0;
+  document.getElementById('stg-daily-time').value = dailyTime.slice(0, 5);
 
+  // Email toggle
   const emailOn = userProfile?.email_reminders_enabled !== false;
   document.getElementById('stg-email-toggle').checked = emailOn;
   document.getElementById('stg-email-label').textContent = emailOn ? 'On' : 'Off';
+
+  // Push toggle
+  if ('serviceWorker' in navigator && 'PushManager' in window) {
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    const sub = await reg.pushManager.getSubscription();
+    const isOn = !!sub;
+    document.getElementById('stg-notif-toggle').checked = isOn;
+    document.getElementById('stg-notif-label').textContent = isOn ? 'On' : 'Off';
+  }
 }
 
 async function saveDailyTime() {
-  const h = String(parseInt(document.getElementById('stg-daily-h').value) || 8).padStart(2,'0');
-  const m = String(parseInt(document.getElementById('stg-daily-m').value) || 0).padStart(2,'0');
-  const timeVal = h + ':' + m + ':00';
+  const val = document.getElementById('stg-daily-time').value;
+  if (!val) { toast('Please select a time', 'error'); return; }
+  const timeVal = val + ':00';
   try {
     const { error } = await sb.from('profiles').update({ daily_notify_time: timeVal }).eq('id', currentUser.id);
     if (error) { toast('Save failed: ' + error.message, 'error'); return; }
     if (userProfile) userProfile.daily_notify_time = timeVal;
-    toast('Daily summary will be sent at ' + h + ':' + m + ' MYT', 'success');
+    toast(`Daily summary will be sent at ${val} MYT ✓`, 'success');
   } catch(e) { toast('Save failed', 'error'); }
 }
 
