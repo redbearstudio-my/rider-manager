@@ -2,6 +2,19 @@
 
 ---
 
+## v3.9 — 14 June 2026
+
+### 🔔 Pre-Trip Push Notifications
+- Settings → Trip Notifications → **Notify before trip**: set hours + minutes (e.g. 0h 30m, 1h 0m)
+- Save button to confirm — no auto-save on typing
+- Stored as `notify_before_minutes` in profiles
+- pg_cron runs every 5 minutes checking for upcoming trips
+- Window: ±5 minutes around the exact reminder time (accurate, no duplicate notifications)
+- Trip time stored as MYT (+08:00) for correct UTC comparison in cron
+- Minimum 5 minutes before trip
+
+---
+
 ## v3.8 — 14 June 2026
 
 ### 🧾 Trip Receipt PDF Export
