@@ -171,7 +171,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .trip-meta{display:flex;align-items:center;gap.75rem;font-size:.8rem;color:var(--muted);margin-top:.5rem;flex-wrap:wrap;gap:.5rem}
 .trip-meta span{display:flex;align-items:center;gap:.25rem}
 .trip-charge{font-size:1.1rem;font-weight:700;color:var(--teal);margin-top:.5rem}
-.trip-actions{display:flex;gap:.5rem;margin-top:.875rem;padding-top:.875rem;border-top:1px solid var(--border)}
+.trip-actions{display:flex;flex-direction:column;gap:.375rem;margin-top:.875rem;padding-top:.875rem;border-top:1px solid var(--border)}
 .btn-sm{padding:.4rem .875rem;border-radius:6px;font-size:.8rem;font-weight:500;cursor:pointer;border:1px solid var(--border);background:#fff;font-family:inherit;transition:all .2s}
 .btn-sm:hover{background:#f1f5f9}
 .btn-sm.danger{color:var(--danger);border-color:#fca5a5}
@@ -1386,6 +1386,54 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   </button>
 </div>
 
+<!-- RECEIPT MODAL -->
+<div class="modal-overlay" id="receipt-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <h2>🧾 Trip Receipt</h2>
+      <button class="modal-close" onclick="closeModal('receipt-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.85rem;color:var(--muted);margin-top:0">Customise and export a receipt to send to your customer.</p>
+
+      <div class="form-row" style="display:flex;gap:.5rem;flex-wrap:nowrap;margin-bottom:.75rem">
+        <div class="form-group" style="flex:1.4;margin-bottom:0"><label>Date</label><input type="date" id="rc-date"></div>
+        <div class="form-group" style="flex:1;margin-bottom:0"><label>Time</label><input type="time" id="rc-time"></div>
+      </div>
+
+      <div style="display:flex;gap:1rem;margin-bottom:.875rem">
+        <div style="flex:1">
+          <div style="font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:.5rem">Vehicle Type</div>
+          <label style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;font-size:.9rem"><input type="checkbox" id="rc-taxi"> Taxi</label>
+          <label style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;font-size:.9rem"><input type="checkbox" id="rc-limo"> Limo</label>
+          <label style="display:flex;align-items:center;gap:.5rem;font-size:.9rem"><input type="checkbox" id="rc-exec"> Executive Taxi</label>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:.5rem">Trip Type</div>
+          <label style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;font-size:.9rem"><input type="checkbox" id="rc-oneway"> One Way</label>
+          <label style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;font-size:.9rem"><input type="checkbox" id="rc-twoway"> Two Way</label>
+          <label style="display:flex;align-items:center;gap:.5rem;font-size:.9rem"><input type="checkbox" id="rc-teksim"> Teksim</label>
+        </div>
+      </div>
+
+      <label style="display:flex;align-items:center;gap:.5rem;font-size:.9rem;margin-bottom:.875rem;padding:.5rem;background:#f9fafb;border-radius:8px">
+        <input type="checkbox" id="rc-show-driver" checked>
+        Include driver name on receipt
+      </label>
+
+      <div style="background:#f9fafb;border:1px solid var(--border);border-radius:var(--radius-sm);padding:.875rem;font-size:.82rem;color:var(--muted)">
+        <div style="display:flex;justify-content:space-between;margin-bottom:.25rem"><span>From</span><span id="rc-preview-from" style="color:var(--text);font-weight:600;text-align:right;max-width:60%"></span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:.25rem"><span>To</span><span id="rc-preview-to" style="color:var(--text);text-align:right;max-width:60%"></span></div>
+        <div style="display:flex;justify-content:space-between;margin-top:.25rem;border-top:1px solid var(--border);padding-top:.25rem"><span>Taxi Fare</span><span id="rc-preview-fare" style="color:var(--teal);font-weight:700;font-size:1rem"></span></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('receipt-modal')">Cancel</button>
+      <button class="btn-save" onclick="exportReceiptPDF()">📄 Export PDF</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -2542,11 +2590,16 @@ function tripCard(t) {
     '<span class="badge badge-pending">Pending</span>';
   const payBadge = t.paid ? '<span class="badge badge-paid">Paid</span>' : '<span class="badge badge-unpaid">Unpaid</span>';
   const actions = isReadOnly ? '' : `
-    <button class="btn-sm" onclick="editTrip('${t.id}')">Edit</button>
-    ${!t.cancelled ? `<button class="btn-sm" onclick="markComplete('${t.id}')">✓ Complete</button>` : ''}
-    ${!t.paid && !t.cancelled ? `<button class="btn-sm" onclick="markPaid('${t.id}')">💰 Mark Paid</button>` : ''}
-    ${!t.cancelled ? `<button class="btn-sm danger" onclick="openCancelModal('${t.id}')">Cancel</button>` : ''}
-    <button class="btn-sm danger" onclick="deleteTrip('${t.id}')">Delete</button>
+    <div style="display:flex;gap:.375rem;margin-bottom:.375rem;flex-wrap:wrap">
+      <button class="btn-sm" onclick="editTrip('${t.id}')">Edit</button>
+      ${!t.cancelled ? `<button class="btn-sm danger" onclick="openCancelModal('${t.id}')">Cancel</button>` : ''}
+      <button class="btn-sm danger" onclick="deleteTrip('${t.id}')">Delete</button>
+    </div>
+    <div style="display:flex;gap:.375rem;flex-wrap:wrap">
+      ${!t.cancelled ? `<button class="btn-sm" onclick="markComplete('${t.id}')">✓ Complete</button>` : ''}
+      ${!t.paid && !t.cancelled ? `<button class="btn-sm" onclick="markPaid('${t.id}')">💰 Mark Paid</button>` : ''}
+      <button class="btn-sm" onclick="openReceiptModal('${t.id}')">🧾 Receipt</button>
+    </div>
   `;
   return `<div class="trip-card">
     <div class="trip-card-header">
@@ -3069,11 +3122,14 @@ async function markComplete(id) {
     }).eq('id', id);
     toast(`Completed! Final charge: RM ${finalCharge}`, 'success');
     await loadAll();
+    if (confirm(`Trip completed! Final: RM ${finalCharge}\n\nWould you like to print a receipt?`)) openReceiptModal(id);
     return;
   }
 
   await sb.from('trips').update({ status: 'completed', completed: true }).eq('id', id);
-  toast('Marked as completed', 'success'); await loadAll();
+  toast('Marked as completed', 'success');
+  await loadAll();
+  if (confirm('Trip completed! Would you like to print a receipt?')) openReceiptModal(id);
 }
 async function markPaid(id) {
   if (guardReadOnly()) return;
@@ -4012,6 +4068,136 @@ async function doA2hs() {
 function dismissA2hs() {
   document.getElementById('a2hs-banner').style.display = 'none';
   localStorage.setItem('a2hs-dismissed', '1');
+}
+
+// ── RECEIPT ────────────────────────────────────────────────────────────────
+let _receiptTrip = null;
+
+function openReceiptModal(tripId) {
+  const trip = trips.find(t => t.id === tripId);
+  if (!trip) return;
+  _receiptTrip = trip;
+
+  document.getElementById('rc-date').value = getMYTDate();
+  document.getElementById('rc-time').value = getMYTTime();
+  document.getElementById('rc-oneway').checked = trip.trip_type !== 'two_way';
+  document.getElementById('rc-twoway').checked = trip.trip_type === 'two_way';
+  document.getElementById('rc-teksim').checked = false;
+  document.getElementById('rc-taxi').checked = false;
+  document.getElementById('rc-limo').checked = false;
+  document.getElementById('rc-exec').checked = false;
+  document.getElementById('rc-show-driver').checked = true;
+
+  document.getElementById('rc-preview-from').textContent = trip.pickup_locations || '—';
+  document.getElementById('rc-preview-to').textContent = trip.dropoff_locations || '—';
+  document.getElementById('rc-preview-fare').textContent = `RM ${parseFloat(trip.charge||0).toFixed(2)}`;
+  openModal('receipt-modal');
+}
+
+function exportReceiptPDF() {
+  const t = _receiptTrip;
+  if (!t) return;
+
+  const date = document.getElementById('rc-date').value;
+  const time = document.getElementById('rc-time').value;
+  const dateStr = date ? new Date(date + 'T00:00').toLocaleDateString('en-MY', {day:'numeric',month:'long',year:'numeric'}) : '';
+  const fare = parseFloat(t.charge||0).toFixed(2);
+  const showDriver = document.getElementById('rc-show-driver').checked;
+  const chk = (id) => document.getElementById(id)?.checked;
+  const box = (checked) => checked
+    ? `<span style="display:inline-block;width:13px;height:13px;border:2px solid #000;background:#000;margin-right:4px;vertical-align:middle;font-size:10px;color:#fff;line-height:13px;text-align:center">&#10003;</span>`
+    : `<span style="display:inline-block;width:13px;height:13px;border:2px solid #000;margin-right:4px;vertical-align:middle"></span>`;
+
+  const receiptHTML = `<div id="rc" style="font-family:Arial,sans-serif;width:400px;padding:16px;background:#fff;font-size:13px;color:#000">
+  <div style="border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:10px;overflow:hidden">
+    <div style="font-size:20px;font-weight:bold;letter-spacing:1px;text-transform:uppercase">Taxi &amp; Limo Service</div>
+    <div style="float:right;margin-top:-28px;font-style:italic;font-weight:bold;color:#c0392b;font-size:13px;text-align:center">Visit<br>Malaysia</div>
+  </div>
+  <div style="margin:6px 0">Date: <u>${dateStr}</u> &nbsp; Time: <u>${time}</u></div>
+  <div style="margin:7px 0">${box(chk('rc-taxi'))} <b>TAXI</b> &nbsp; ${box(chk('rc-limo'))} <b>LIMO</b> &nbsp; ${box(chk('rc-exec'))} <b>EXECUTIVE TAXI</b></div>
+  <div style="margin:7px 0">${box(chk('rc-oneway'))} <b>ONE WAY</b> &nbsp; ${box(chk('rc-twoway'))} <b>TWO WAY</b> &nbsp; ${box(chk('rc-teksim'))} <b>TEKSIM</b></div>
+  <div style="margin:8px 0"><b>From:</b> <u style="min-width:220px;display:inline-block">${t.pickup_locations||''}</u></div>
+  <div style="margin:8px 0"><b>&nbsp;&nbsp;&nbsp;&nbsp;to</b> <u style="min-width:220px;display:inline-block">${t.dropoff_locations||''}</u></div>
+  ${showDriver ? `<div style="margin:8px 0"><b>Issued by:</b> <u style="min-width:110px;display:inline-block">${userProfile?.name||''}</u> &nbsp; <b>Taxi Fare</b></div>` : '<div style="margin:8px 0"><b>Taxi Fare</b></div>'}
+  <table style="width:100%;border-collapse:collapse;margin-top:8px">
+    <tr><td style="border:2px solid #000;padding:7px 10px;width:55%"><b>BOOKING:</b></td><td style="border:2px solid #000;padding:7px 10px;text-align:right;font-weight:bold">${t.trip_type==='hourly'&&t.estimated_hours?t.estimated_hours+' HOURS':''}</td></tr>
+    ${t.trip_type==='hourly'&&t.hourly_rate?`<tr><td colspan="2" style="border:2px solid #000;padding:6px 10px;font-size:12px">RM ${t.hourly_rate}/h x ${t.estimated_hours||'?'}h</td></tr>`:''}
+    <tr><td style="border:2px solid #000;padding:7px 10px"><b>TOTAL CHARGE</b></td><td style="border:2px solid #000;padding:7px 10px;text-align:right;font-size:20px;font-weight:bold">RM ${fare}</td></tr>
+  </table>
+  ${t.guest_name?`<div style="margin-top:6px;font-size:12px;color:#555">Passenger: ${t.guest_name}${t.guest_contact?' - '+t.guest_contact.replace(' | ',' / '):''}</div>`:''}
+  <div style="font-size:11px;color:#555;margin-top:8px;border-top:1px solid #ccc;padding-top:6px">N.B. Extra charge of 50% to be added from Midnight till 6.00 a.m.</div>
+</div>`;
+
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;background:#fff';
+  container.innerHTML = receiptHTML;
+  document.body.appendChild(container);
+
+  closeModal('receipt-modal');
+  toast('Generating receipt image...', 'success');
+
+  // Load html2canvas + jsPDF then capture
+  if (!window.html2canvas) {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    script.onload = () => {
+      if (!window.jspdf) {
+        const script2 = document.createElement('script');
+        script2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        script2.onload = () => captureReceipt(container, date, dateStr, t);
+        script2.onerror = () => { document.body.removeChild(container); toast('Failed to load PDF library', 'error'); };
+        document.head.appendChild(script2);
+      } else {
+        captureReceipt(container, date, dateStr, t);
+      }
+    };
+    script.onerror = () => { document.body.removeChild(container); toast('Failed to load library', 'error'); };
+    document.head.appendChild(script);
+  } else {
+    captureReceipt(container, date, dateStr, t);
+  }
+}
+
+async function captureReceipt(container, date, dateStr, t) {
+  try {
+    const el = container.querySelector('#rc');
+    if (!el) { toast('Receipt element not found', 'error'); document.body.removeChild(container); return; }
+    const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#fff', logging: false, allowTaint: true, useCORS: true });
+    document.body.removeChild(container);
+
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    if (!jsPDF) { toast('PDF library not loaded', 'error'); return; }
+
+    const pxPerMm = 96 / 25.4;
+    const pdfW = canvas.width / (pxPerMm * 2);
+    const pdfH = canvas.height / (pxPerMm * 2);
+
+    const pdf = new jsPDF({ orientation: pdfH > pdfW ? 'portrait' : 'landscape', unit: 'mm', format: [pdfW, pdfH] });
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
+
+    const guestName = t.guest_name || '';
+    const guestSuffix = guestName ? `_${guestName.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '')}` : '';
+    const filename = `receipt_${date}${guestSuffix}.pdf`;
+    const pdfBlob = pdf.output('blob');
+    const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: 'Trip Receipt', text: `Trip receipt - ${dateStr}` }); return; }
+      catch(e) { if (e.name === 'AbortError') return; }
+    }
+
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    console.error('captureReceipt error:', e);
+    if (container.parentNode) document.body.removeChild(container);
+    toast('Receipt error: ' + e.message, 'error');
+  }
 }
 
 // ── WEB PUSH NOTIFICATIONS ─────────────────────────────────────────────────
