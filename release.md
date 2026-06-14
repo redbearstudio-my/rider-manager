@@ -2,6 +2,28 @@
 
 ---
 
+## v3.8 — 14 June 2026
+
+### 🧾 Trip Receipt PDF Export
+- **🧾 Receipt** button on every trip card
+- Also prompted after marking trip complete (regular and hourly)
+- Receipt modal: editable date (defaults to today MYT) and time (defaults to current MYT time)
+- Checkboxes for vehicle type: Taxi / Limo / Executive Taxi
+- Checkboxes for trip type: One Way / Two Way / Teksim (auto-checked from trip data)
+- Toggle to include/hide driver name
+- **📄 Export PDF** — generates PDF via html2canvas + jsPDF
+- On Android: triggers native Share sheet (WhatsApp, Telegram, email etc)
+- On desktop: downloads as PDF
+- Filename: `receipt_2026-06-14_Ahmad.pdf` (date + customer name)
+- Receipt content: date/time, checkboxes, from/to, total charge, midnight surcharge note
+
+### 🗂️ Trip Card UX
+- Buttons reorganised into 2 clear rows:
+  - Row 1: Edit · Cancel · Delete
+  - Row 2: ✓ Complete · 💰 Mark Paid · 🧾 Receipt
+
+---
+
 ## v3.7 — 14 June 2026
 
 ### 🚗 Trip Categories
