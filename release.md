@@ -2,6 +2,15 @@
 
 ---
 
+## v4.6 — 15 June 2026
+
+### 👑 Admin & Subscription
+- Fixed extend trial timezone issue — expiry now saves as end-of-day MYT
+- Settings profile header shows trial expiry date + days remaining for extended trials
+- Subscription page now has a ← back button to return to Settings
+
+---
+
 ## v4.5 — 15 June 2026
 
 ### 👑 Admin Panel
