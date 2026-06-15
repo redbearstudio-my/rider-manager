@@ -2,6 +2,15 @@
 
 ---
 
+## v4.5 — 15 June 2026
+
+### 👑 Admin Panel
+- **📅 Extend Trial** button per user — opens date picker modal, defaults to 7 days from today
+- Sets `subscription_expiry_date` while keeping `subscription_status: trial`
+- Fixed `getUserStatus()` to respect `subscription_status` field — trial users with future expiry no longer show as "Active"
+
+---
+
 ## v4.4 — 15 June 2026
 
 ### 🔔 Notifications
