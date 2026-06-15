@@ -1146,6 +1146,24 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
+<!-- EXTEND TRIAL MODAL -->
+<div class="modal-overlay" id="extend-trial-modal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header"><h2>📅 Extend Trial</h2><button class="modal-close" onclick="closeModal('extend-trial-modal')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="extend-trial-user-id">
+      <div class="form-group">
+        <label>New Trial Expiry Date</label>
+        <input type="date" id="extend-trial-date" style="width:100%;padding:.6rem;border:1.5px solid var(--border);border-radius:8px;font-size:1rem">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('extend-trial-modal')">Cancel</button>
+      <button class="btn-save" onclick="confirmExtendTrial()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- BUSY TIME MODAL -->
 <div class="modal-overlay" id="busy-modal">
   <div class="modal" style="max-width:420px">
@@ -2236,13 +2254,26 @@ async function savePayment() {
 function getUserStatus(p) {
   if (!p) return 'trial';
   if (p.subscription_status === 'blocked') return 'blocked';
+  if (p.subscription_status === 'active') {
+    if (p.subscription_expiry_date) {
+      return new Date(p.subscription_expiry_date) > new Date() ? 'active' : 'expired';
+    }
+    return 'active';
+  }
+  if (p.subscription_status === 'trial') {
+    if (p.subscription_expiry_date) {
+      return new Date(p.subscription_expiry_date) > new Date() ? 'trial' : 'expired';
+    }
+    const trialDays = parseInt(appSettings.trial_days || '7');
+    const trialStart = p.trial_start_date ? new Date(p.trial_start_date) : new Date();
+    const daysLeft = trialDays - Math.floor((new Date() - trialStart) / (1000*60*60*24));
+    return daysLeft > 0 ? 'trial' : 'expired';
+  }
+  // fallback
   if (p.subscription_expiry_date) {
     return new Date(p.subscription_expiry_date) > new Date() ? 'active' : 'expired';
   }
-  const trialDays = parseInt(appSettings.trial_days || '7');
-  const trialStart = p.trial_start_date ? new Date(p.trial_start_date) : new Date();
-  const daysLeft = trialDays - Math.floor((new Date() - trialStart) / (1000*60*60*24));
-  return daysLeft > 0 ? 'trial' : 'expired';
+  return 'expired';
 }
 
 function updateAdminBadge(count) {
@@ -2383,6 +2414,7 @@ async function renderUsersTab() {
               style="width:90px;padding:.3rem .5rem;border:1.5px solid var(--border);border-radius:8px;font-size:.8rem">
             <button class="admin-btn approve" onclick="renewUserCustom('${p.id}')">+ Custom</button>
             <button class="admin-btn trial" onclick="resetTrial('${p.id}')">↺ Trial</button>
+            <button class="admin-btn" style="background:#f0fdf4;color:#166534;border-color:#86efac" onclick="extendTrial('${p.id}')">📅 Extend Trial</button>
             <button class="admin-btn" style="border-color:#6b7280;color:#6b7280" onclick="markUserExpired('${p.id}')">⏱ Expire</button>
             <button class="admin-btn block" onclick="setUserStatus('${p.id}','blocked',false)">${st==='blocked'?'✓ Unblock':'✕ Block'}</button>
             <button class="admin-btn block" style="border-color:#dc2626;color:#dc2626" onclick="deleteUser('${p.id}','${(p.name||'').replace(/'/g,"\\'")}')">🗑 Delete</button>
@@ -2547,6 +2579,26 @@ async function resetTrial(userId) {
   }).eq('id', userId);
   if (error) return toast(error.message, 'error');
   toast('Trial reset', 'success');
+  renderAdminPanel();
+}
+
+async function extendTrial(userId) {
+  document.getElementById('extend-trial-user-id').value = userId;
+  document.getElementById('extend-trial-date').value = getMYTDate(7); // default 7 days from now
+  openModal('extend-trial-modal');
+}
+
+async function confirmExtendTrial() {
+  const userId = document.getElementById('extend-trial-user-id').value;
+  const dateStr = document.getElementById('extend-trial-date').value;
+  if (!dateStr) return toast('Please select a date', 'error');
+  const { error } = await sb.from('profiles').update({
+    subscription_status: 'trial',
+    subscription_expiry_date: new Date(dateStr).toISOString()
+  }).eq('id', userId);
+  if (error) return toast(error.message, 'error');
+  closeModal('extend-trial-modal');
+  toast(`Trial extended to ${dateStr}`, 'success');
   renderAdminPanel();
 }
 
