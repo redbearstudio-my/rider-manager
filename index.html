@@ -4278,34 +4278,47 @@ async function captureReceipt(container, date, dateStr, t) {
     const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#fff', logging: false, allowTaint: true, useCORS: true });
     document.body.removeChild(container);
 
+    const guestName = t.guest_name || '';
+    const guestSuffix = guestName ? `_${guestName.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '')}` : '';
+    const filename = `receipt_${date}${guestSuffix}.png`;
+
+    // Export as image
+    canvas.toBlob(async (blob) => {
+      const file = new File([blob], filename, { type: 'image/png' });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: 'Trip Receipt', text: `Trip receipt - ${dateStr}` }); return; }
+        catch(e) { if (e.name === 'AbortError') return; }
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+
+    /* PDF export — kept for future use
     const imgData = canvas.toDataURL('image/png');
     const { jsPDF } = window.jspdf;
     if (!jsPDF) { toast('PDF library not loaded', 'error'); return; }
-
     const pxPerMm = 96 / 25.4;
     const pdfW = canvas.width / (pxPerMm * 2);
     const pdfH = canvas.height / (pxPerMm * 2);
-
     const pdf = new jsPDF({ orientation: pdfH > pdfW ? 'portrait' : 'landscape', unit: 'mm', format: [pdfW, pdfH] });
     pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
-
-    const guestName = t.guest_name || '';
-    const guestSuffix = guestName ? `_${guestName.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '')}` : '';
-    const filename = `receipt_${date}${guestSuffix}.pdf`;
+    const pdfFilename = `receipt_${date}${guestSuffix}.pdf`;
     const pdfBlob = pdf.output('blob');
-    const file = new File([pdfBlob], filename, { type: 'application/pdf' });
-
-    if (navigator.share && navigator.canShare?.({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: 'Trip Receipt', text: `Trip receipt - ${dateStr}` }); return; }
+    const pdfFile = new File([pdfBlob], pdfFilename, { type: 'application/pdf' });
+    if (navigator.share && navigator.canShare?.({ files: [pdfFile] })) {
+      try { await navigator.share({ files: [pdfFile], title: 'Trip Receipt', text: `Trip receipt - ${dateStr}` }); return; }
       catch(e) { if (e.name === 'AbortError') return; }
     }
-
     const url = URL.createObjectURL(pdfBlob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
+    a.href = url; a.download = pdfFilename; a.click();
     URL.revokeObjectURL(url);
+    */
+
   } catch(e) {
     console.error('captureReceipt error:', e);
     if (container.parentNode) document.body.removeChild(container);
