@@ -2,6 +2,19 @@
 
 ---
 
+## v4.1 — 15 June 2026
+
+### 🐛 Bug Fixes
+- Trip modal now always scrolls to top when opened
+- Fixed new user Google signup failing with "Database error saving new user" — `handle_new_user()` trigger now has exception handler
+- Fixed `SIGNED_IN` auth event not handled, causing OAuth redirect to stay on login page
+- MYT date/time now uses `Intl` API with fallback for reliable timezone handling
+
+### 🔔 Onboarding
+- New Step 3: Notification setup during onboarding (daily time, before-trip reminder, push/email toggles)
+
+---
+
 ## v4.0 — 14 June 2026
 
 ### 🔔 Notifications Restructured
