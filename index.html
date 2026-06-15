@@ -3060,6 +3060,9 @@ function openTripModal(trip = null) {
   document.getElementById('pax-chevron').style.transform = '';
   document.getElementById('lug-chevron').style.transform = '';
   switchTripTab('form');
+  // Reset modal scroll to top
+  const tripModal = document.getElementById('trip-modal');
+  if (tripModal) setTimeout(() => { tripModal.querySelector('.modal').scrollTop = 0; }, 30);
   const today = getMYTDate();
   const nowTime = getMYTTime();
   document.getElementById('t-date').value = isEdit ? trip.date : today;
