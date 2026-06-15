@@ -2,6 +2,15 @@
 
 ---
 
+## v4.3 — 15 June 2026
+
+### 🧾 Receipt
+- Fixed "BOOKINGG" rendering glitch
+- Fixed "TOTALCHARGE" missing space
+- Applied Arial font, disabled ligatures, added letter-spacing for clean rendering
+
+---
+
 ## v4.2 — 15 June 2026
 
 ### 🧾 Receipt
