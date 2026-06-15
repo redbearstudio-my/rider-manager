@@ -132,7 +132,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .user-meta .signout{font-size:.75rem;color:var(--teal);cursor:pointer}
 .main-content{margin-left:220px;flex:1;padding:2rem;min-height:100vh}
 .page{display:none}.page.active{display:block}
-.page-header{margin-bottom:1.75rem}
+.page-header{margin-bottom:1.75rem;display:flex;align-items:center}
 .page-header h1{font-size:1.5rem;font-weight:700}
 .page-header p{color:var(--muted);font-size:.9rem;margin-top:.25rem}
 
@@ -831,7 +831,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
     <!-- SUBSCRIPTION PAGE (users only) -->
     <div id="page-subscription" class="page">
-      <div class="page-header"><h1>Subscription</h1></div>
+      <div class="page-header">
+        <button onclick="navigate('settings')" style="background:none;border:none;cursor:pointer;padding:.25rem;margin-right:.5rem;display:flex;align-items:center;color:var(--teal)">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <h1>Subscription</h1>
+      </div>
       <div id="settings-sub-status"></div>
       <div id="settings-sub-history"></div>
     </div>
@@ -1727,7 +1732,14 @@ async function loadProfile() {
       const labels = {active:'✅ Active', trial:'🕐 Trial', expired:'⚠️ Expired', blocked:'🚫 Blocked'};
       const [color, bg] = (colors[st]||'#6b7280;background:#f3f4f6').split(';background:');
       const statusEl = document.getElementById('stg-profile-status');
-      if (statusEl) statusEl.innerHTML = `<span style="display:inline-block;font-size:.75rem;font-weight:700;color:#${color};background:#${bg};padding:.2rem .6rem;border-radius:20px">${labels[st]||st}</span>`;
+      // Show expiry date for trial users
+      let expiryHint = '';
+      if (st === 'trial' && userProfile.subscription_expiry_date) {
+        const exp = new Date(userProfile.subscription_expiry_date);
+        const daysLeft = Math.ceil((exp - new Date()) / (1000*60*60*24));
+        expiryHint = `<span style="font-size:.72rem;color:#92400e;margin-left:.4rem">Expires ${exp.toLocaleDateString('en-MY',{day:'numeric',month:'short',year:'numeric'})} · ${daysLeft}d left</span>`;
+      }
+      if (statusEl) statusEl.innerHTML = `<span style="display:inline-block;font-size:.75rem;font-weight:700;color:#${color};background:#${bg};padding:.2rem .6rem;border-radius:20px">${labels[st]||st}</span>${expiryHint}`;
     }
   }
   if (document.getElementById('settings-name')) document.getElementById('settings-name').value = name;
@@ -2017,8 +2029,14 @@ async function renderSettingsSubscription() {
     expiryLine = `Expired: ${expiry.toLocaleDateString('en-MY', {day:'numeric',month:'long',year:'numeric'})}`;
     daysLine = `${daysAgo} day${daysAgo!==1?'s':''} ago`;
   } else if (st === 'trial') {
-    expiryLine = `Free trial`;
-    daysLine = trialLeft > 0 ? `${trialLeft} day${trialLeft!==1?'s':''} remaining` : 'Trial ended';
+    if (expiry) {
+      const daysLeft = Math.ceil((expiry - now) / (1000*60*60*24));
+      expiryLine = `Trial · Expires: ${expiry.toLocaleDateString('en-MY', {day:'numeric',month:'long',year:'numeric'})}`;
+      daysLine = daysLeft > 0 ? `${daysLeft} day${daysLeft!==1?'s':''} remaining` : 'Trial ended';
+    } else {
+      expiryLine = `Free trial`;
+      daysLine = trialLeft > 0 ? `${trialLeft} day${trialLeft!==1?'s':''} remaining` : 'Trial ended';
+    }
   }
 
   // WhatsApp CTA button — show for trial and expired users
@@ -2592,14 +2610,16 @@ async function confirmExtendTrial() {
   const userId = document.getElementById('extend-trial-user-id').value;
   const dateStr = document.getElementById('extend-trial-date').value;
   if (!dateStr) return toast('Please select a date', 'error');
+  // Use end of day MYT (23:59:59 +08:00) to avoid timezone rollback issues
+  const expiryISO = `${dateStr}T23:59:59+08:00`;
   const { error } = await sb.from('profiles').update({
     subscription_status: 'trial',
-    subscription_expiry_date: new Date(dateStr).toISOString()
+    subscription_expiry_date: expiryISO
   }).eq('id', userId);
   if (error) return toast(error.message, 'error');
   closeModal('extend-trial-modal');
   toast(`Trial extended to ${dateStr}`, 'success');
-  renderAdminPanel();
+  await renderAdminPanel();
 }
 
 async function batchRenew(months) {
