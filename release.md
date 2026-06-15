@@ -2,6 +2,15 @@
 
 ---
 
+## v4.2 — 15 June 2026
+
+### 🧾 Receipt
+- Export as PNG image (shareable via native share sheet)
+- PDF export code preserved as comments for future use
+- Filename: `receipt_2026-06-15_GuestName.png`
+
+---
+
 ## v4.1 — 15 June 2026
 
 ### 🐛 Bug Fixes
