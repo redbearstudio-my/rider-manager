@@ -2,6 +2,19 @@
 
 ---
 
+## v4.4 — 15 June 2026
+
+### 🔔 Notifications
+- Before-trip reminder now sends **both** push notification and email
+- Email includes trip time, guest name, contact, route, and fare
+- Subject: "🚗 Trip in 30 min — 14:30 Ahmad"
+
+### 🔧 Settings
+- Version number updated to v4.3, duplicate version text removed
+- Only one version shown in About row
+
+---
+
 ## v4.3 — 15 June 2026
 
 ### 🧾 Receipt
