@@ -2,6 +2,18 @@
 
 ---
 
+## v4.7 — 16 June 2026
+
+### 🐛 Bug Fixes
+- Fixed trip date showing yesterday in MYT — now uses pure UTC+8 offset via `getUTC*()` methods, never `getTimezoneOffset()`
+- Removed placeholder "50" from hourly rate input
+
+### 🔔 Notifications (SQL)
+- Daily push + email now sends even when there are no trips today
+- No-trip message: "📋 No trips today — Enjoy your day off! 🌴"
+
+---
+
 ## v4.6 — 15 June 2026
 
 ### 👑 Admin & Subscription
