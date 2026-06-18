@@ -2479,12 +2479,42 @@ function updateBatchBar() {
   bar.style.display = selectedUsers.size > 0 ? '' : 'none';
 }
 
+// Send push + email notification to a user
+async function notifyUser(userId, title, body) {
+  try {
+    const { data: p } = await sb.from('profiles').select('push_subscription, email, notification_enabled').eq('id', userId).single();
+    if (!p) return;
+    // Push notification
+    if (p.notification_enabled && p.push_subscription) {
+      await fetch('https://gqavlaetwrvyugrqarcz.supabase.co/functions/v1/send-push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxYXZsYWV0d3J2eXVncnFhcmN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNzA1NTcsImV4cCI6MjA5MTY0NjU1N30.QlEt3hevzpoEDy_RkCJsMW4Oyv9Jbp4-GuC_v-yUUXQ' },
+        body: JSON.stringify({ subscription: p.push_subscription, title, body, tag: 'account-update' })
+      });
+    }
+    // Email via Edge Function (avoids CORS on Resend direct calls)
+    if (p.email) {
+      const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:2rem;color:#1f2937">
+        <h2 style="color:#0e7490">${title}</h2>
+        <p style="font-size:1rem;line-height:1.6">${body}</p>
+        <p style="color:#6b7280;font-size:.85rem;margin-top:2rem">— Rider Manager</p>
+      </div>`;
+      await fetch('https://gqavlaetwrvyugrqarcz.supabase.co/functions/v1/send-account-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxYXZsYWV0d3J2eXVncnFhcmN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNzA1NTcsImV4cCI6MjA5MTY0NjU1N30.QlEt3hevzpoEDy_RkCJsMW4Oyv9Jbp4-GuC_v-yUUXQ' },
+        body: JSON.stringify({ to: p.email, subject: title, html })
+      });
+    }
+  } catch(e) { console.warn('notifyUser error:', e); }
+}
+
 async function renewUser(userId, months) {
   const { data: p } = await sb.from('profiles').select('subscription_expiry_date').eq('id', userId).single();
   const base = p?.subscription_expiry_date && new Date(p.subscription_expiry_date) > new Date()
     ? new Date(p.subscription_expiry_date) : new Date();
   const newExpiry = new Date(base);
   newExpiry.setMonth(newExpiry.getMonth() + months);
+  const expiryStr = newExpiry.toLocaleDateString('en-MY', {day:'numeric', month:'long', year:'numeric'});
   const { error } = await sb.from('profiles').update({
     subscription_expiry_date: newExpiry.toISOString(),
     subscription_status: 'active',
@@ -2492,6 +2522,7 @@ async function renewUser(userId, months) {
   }).eq('id', userId);
   if (error) return toast(error.message, 'error');
   toast(`Renewed +${months} month${months>1?'s':''}`, 'success');
+  await notifyUser(userId, '✅ Subscription Renewed', `Your subscription has been renewed for ${months} month${months>1?'s':''}. New expiry: ${expiryStr}.`);
   renderAdminPanel();
 }
 
@@ -2503,7 +2534,6 @@ async function renewUserCustom(userId) {
 }
 
 async function renewUserForever(userId) {
-  // Set expiry 100 years from now
   const forever = new Date();
   forever.setFullYear(forever.getFullYear() + 100);
   const { error } = await sb.from('profiles').update({
@@ -2513,6 +2543,7 @@ async function renewUserForever(userId) {
   }).eq('id', userId);
   if (error) return toast(error.message, 'error');
   toast('Set to active forever ♾', 'success');
+  await notifyUser(userId, '✅ Subscription Activated', 'Your subscription has been activated with lifetime access. Thank you!');
   if (activeBillingTab === 'subs') renderSubscriptionsTable();
   else renderUsersTab();
 }
@@ -2619,6 +2650,8 @@ async function confirmExtendTrial() {
   if (error) return toast(error.message, 'error');
   closeModal('extend-trial-modal');
   toast(`Trial extended to ${dateStr}`, 'success');
+  const expDate = new Date(dateStr).toLocaleDateString('en-MY', {day:'numeric', month:'long', year:'numeric'});
+  await notifyUser(userId, '🎉 Trial Extended', `Great news! Your free trial has been extended until ${expDate}. Enjoy using Rider Manager!`);
   await renderAdminPanel();
 }
 
