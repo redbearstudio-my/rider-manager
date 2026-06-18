@@ -2,6 +2,20 @@
 
 ---
 
+## v4.8 — 16 June 2026
+
+### 👑 Admin Notifications
+- Users now receive push + email when admin extends their trial: "🎉 Trial Extended"
+- Users now receive push + email when admin renews subscription: "✅ Subscription Renewed"
+- Account emails routed through new `send-account-email` Supabase Edge Function to avoid CORS issues with direct Resend calls from browser
+
+### 🐛 Critical Fix — Daily Email Bug
+- Fixed bug where ALL users received daily summary emails every time ANY single user's `daily_notify_time` matched the cron window — some users received 5+ duplicate emails per day
+- `send_daily_trip_reminder()` now accepts a `target_user_id` parameter and only emails that specific user
+- Cron wrapper now loops through all matching users instead of exiting after the first
+
+---
+
 ## v4.7 — 16 June 2026
 
 ### 🐛 Bug Fixes
