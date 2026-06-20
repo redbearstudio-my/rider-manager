@@ -2,6 +2,18 @@
 
 ---
 
+## v4.9 — 19 June 2026
+
+### 📍 Trip Locations
+- Pickup/dropoff locations can now be reordered with ↑/↓ buttons
+- Buttons styled to match the ✕ remove button (bordered, not flat)
+- Smart visibility: hidden entirely for a single location; only ↓ on first item; only ↑ on last item
+
+### 🔔 Notifications (SQL)
+- Fixed daily summary firing twice per day — narrowed cron window from ±5min to a forward-only 5min window matching the 5-min cron interval
+
+---
+
 ## v4.8 — 16 June 2026
 
 ### 👑 Admin Notifications
