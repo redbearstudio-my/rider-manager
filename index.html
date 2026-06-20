@@ -254,7 +254,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .btn-icon:hover{background:#f1f5f9}
 .loc-add-btn{width:100%;padding:.6rem;border:1.5px dashed var(--teal);border-radius:var(--radius-sm);background:transparent;color:var(--teal);font-family:inherit;font-size:.85rem;font-weight:600;cursor:pointer;margin-top:.4rem;transition:background .2s}
 .loc-add-btn:hover{background:#f0fdff}
-.loc-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem}
+.loc-row{display:flex;align-items:center;gap:.3rem;margin-bottom:.4rem}
 .loc-row input{flex:1;padding:.65rem .875rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:.875rem;outline:none;transition:border-color .2s}
 .loc-row input:focus{border-color:var(--teal)}
 .loc-row .loc-num{font-size:.75rem;font-weight:600;color:var(--muted);min-width:18px;text-align:right}
@@ -2927,8 +2927,21 @@ function addLocField(containerId, value = '') {
   row.className = 'loc-row';
   row.innerHTML = `<span class="loc-num">${index}</span>
     <input type="text" placeholder="Enter address" value="${value.replace(/"/g,'&quot;')}">
+    <button type="button" class="btn-move btn-move-up" onclick="moveLocField(this,-1)" title="Move up" style="background:#fff;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;color:var(--text);font-size:.95rem;font-weight:700;padding:.35rem .55rem;line-height:1">↑</button>
+    <button type="button" class="btn-move btn-move-down" onclick="moveLocField(this,1)" title="Move down" style="background:#fff;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;color:var(--text);font-size:.95rem;font-weight:700;padding:.35rem .55rem;line-height:1">↓</button>
     <button type="button" class="btn-remove" onclick="removeLocField(this)" title="Remove">✕</button>`;
   container.appendChild(row);
+  renumberLocs(container);
+}
+
+function moveLocField(btn, direction) {
+  const row = btn.closest('.loc-row');
+  const container = row.parentElement;
+  if (direction === -1 && row.previousElementSibling) {
+    container.insertBefore(row, row.previousElementSibling);
+  } else if (direction === 1 && row.nextElementSibling) {
+    container.insertBefore(row.nextElementSibling, row);
+  }
   renumberLocs(container);
 }
 
@@ -2944,7 +2957,21 @@ function removeLocField(btn) {
 }
 
 function renumberLocs(container) {
-  container.querySelectorAll('.loc-num').forEach((el, i) => el.textContent = i + 1);
+  const rows = container.querySelectorAll('.loc-row');
+  const total = rows.length;
+  rows.forEach((row, i) => {
+    row.querySelector('.loc-num').textContent = i + 1;
+    const upBtn = row.querySelector('.btn-move-up');
+    const downBtn = row.querySelector('.btn-move-down');
+    if (total <= 1) {
+      // Only one location — hide both
+      upBtn.style.display = 'none';
+      downBtn.style.display = 'none';
+    } else {
+      upBtn.style.display = i === 0 ? 'none' : '';
+      downBtn.style.display = i === total - 1 ? 'none' : '';
+    }
+  });
 }
 
 function setLocFields(containerId, pipedValue) {
