@@ -693,6 +693,25 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         </div>
       </div>
 
+      <!-- Favorites section -->
+      <div class="stg-group-label">Favorites</div>
+      <div class="stg-group">
+        <div class="stg-row" onclick="navigate('favorites-customers')" style="cursor:pointer">
+          <div class="stg-row-left">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
+            Saved Customers
+          </div>
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--muted)"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="stg-row" onclick="navigate('favorites-locations')" style="cursor:pointer">
+          <div class="stg-row-left">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            Saved Locations
+          </div>
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--muted)"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
+
       <!-- Data section -->
       <div class="stg-group-label">Data</div>
       <div class="stg-group">
@@ -801,9 +820,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         </div>
       </div>
 
-      <!-- Log out -->
-      <button onclick="doLogout()" class="stg-logout-btn">Log Out</button>
-      <div style="text-align:center;font-size:.75rem;color:var(--muted);margin-top:.5rem"></div>
+      <!-- Account Actions section -->
+      <div class="stg-group-label">Account Actions</div>
+      <div class="stg-group">
+        <div class="stg-row" onclick="doLogout()" style="cursor:pointer">
+          <div class="stg-row-left" style="color:var(--danger)">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Log Out
+          </div>
+        </div>
+      </div>
 
     </div>
 
@@ -839,6 +865,30 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       </div>
       <div id="settings-sub-status"></div>
       <div id="settings-sub-history"></div>
+    </div>
+
+    <!-- FAVORITE CUSTOMERS PAGE -->
+    <div id="page-favorites-customers" class="page">
+      <div class="page-header">
+        <button onclick="navigate('settings')" style="background:none;border:none;cursor:pointer;padding:.25rem;margin-right:.5rem;display:flex;align-items:center;color:var(--teal)">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <h1>Saved Customers</h1>
+      </div>
+      <button class="btn-primary" style="width:100%;margin-bottom:1rem" onclick="openCustomerModal()">+ Add Customer</button>
+      <div id="customers-list"></div>
+    </div>
+
+    <!-- FAVORITE LOCATIONS PAGE -->
+    <div id="page-favorites-locations" class="page">
+      <div class="page-header">
+        <button onclick="navigate('settings')" style="background:none;border:none;cursor:pointer;padding:.25rem;margin-right:.5rem;display:flex;align-items:center;color:var(--teal)">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <h1>Saved Locations</h1>
+      </div>
+      <button class="btn-primary" style="width:100%;margin-bottom:1rem" onclick="openLocationModal()">+ Add Location</button>
+      <div id="locations-list"></div>
     </div>
 
     <!-- ADMIN PAGE -->
@@ -997,7 +1047,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <div class="form-group" style="flex:1"><label>Time *</label><input type="time" id="t-time"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Guest Name</label><input type="text" id="t-name" placeholder="Guest name"></div>
+        <div class="form-group">
+          <label>Guest Name</label>
+          <div style="display:flex;gap:.4rem">
+            <input type="text" id="t-name" placeholder="Guest name" style="flex:1">
+            <button type="button" onclick="openPickCustomerModal()" title="Pick saved customer" style="background:#fff;border:1.5px solid var(--border);border-radius:8px;padding:0 .6rem;cursor:pointer;display:flex;align-items:center"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--teal)"><rect x="4" y="2" width="16" height="20" rx="2"/><circle cx="12" cy="10" r="2.5"/><path d="M8.5 16.5a3.5 3.5 0 017 0"/><line x1="2" y1="7" x2="4" y2="7"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="2" y1="17" x2="4" y2="17"/></svg></button>
+          </div>
+        </div>
       </div>
       <div class="form-group">
         <label>Guest Contact(s) <span style="color:var(--muted);font-weight:400;font-size:.8rem">(Optional)</span></label>
@@ -1165,6 +1221,39 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal('extend-trial-modal')">Cancel</button>
       <button class="btn-save" onclick="confirmExtendTrial()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- CUSTOMER MODAL -->
+<div class="modal-overlay" id="customer-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header"><h2 id="customer-modal-title">Add Customer</h2><button class="modal-close" onclick="closeModal('customer-modal')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="customer-id">
+      <div class="form-group"><label>Name *</label><input type="text" id="customer-name" placeholder="e.g. Ahmad Razif"></div>
+      <div class="form-group"><label>Contact (Optional)</label><input type="text" id="customer-contact" placeholder="+60123456789"></div>
+      <div class="form-group"><label>Notes (Optional)</label><textarea id="customer-notes" placeholder="e.g. VIP, prefers WhatsApp" style="min-height:70px"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('customer-modal')">Cancel</button>
+      <button class="btn-save" onclick="saveCustomer()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOCATION MODAL -->
+<div class="modal-overlay" id="location-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header"><h2 id="location-modal-title">Add Location</h2><button class="modal-close" onclick="closeModal('location-modal')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="location-id">
+      <div class="form-group"><label>Label *</label><input type="text" id="location-label" placeholder="e.g. KLIA2, Home, Office"></div>
+      <div class="form-group"><label>Address *</label><textarea id="location-address" placeholder="Full address" style="min-height:70px"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('location-modal')">Cancel</button>
+      <button class="btn-save" onclick="saveLocation()">Save</button>
     </div>
   </div>
 </div>
@@ -1756,6 +1845,7 @@ async function loadAll() {
   trips = t.data || [];
   expenses = e.data || [];
   busyTimes = b.data || [];
+  try { await loadFavorites(); } catch(e) { console.warn('loadFavorites error:', e); }
   refreshAll();
 }
 
@@ -1840,6 +1930,8 @@ function navigate(page) {
   if (page === 'admin') renderAdminPanel();
   if (page === 'settings') { renderSettingsSubscription(); renderSettingsNotifications(); }
   if (page === 'subscription') renderSettingsSubscription();
+  if (page === 'favorites-customers') renderCustomersList();
+  if (page === 'favorites-locations') renderLocationsList();
   // FAB: on calendar open busy modal, on other pages open trip modal
   const fab = document.getElementById('fab-btn');
   if (page === 'calendar') {
@@ -2814,6 +2906,7 @@ function tripCard(t) {
       ${!t.cancelled ? `<button class="btn-sm" onclick="markComplete('${t.id}')">✓ Complete</button>` : ''}
       ${!t.paid && !t.cancelled ? `<button class="btn-sm" onclick="markPaid('${t.id}')">💰 Mark Paid</button>` : ''}
       <button class="btn-sm" onclick="openReceiptModal('${t.id}')">🧾 Receipt</button>
+      ${t.guest_name ? `<button class="btn-sm" onclick="saveTripGuestAsFavorite('${t.id}')">📇 Save Customer</button>` : ''}
     </div>
   `;
   return `<div class="trip-card">
@@ -2925,8 +3018,10 @@ function addLocField(containerId, value = '') {
   const index = container.children.length + 1;
   const row = document.createElement('div');
   row.className = 'loc-row';
+  const inputId = `${containerId}-input-${Date.now()}-${Math.floor(Math.random()*1000)}`;
   row.innerHTML = `<span class="loc-num">${index}</span>
-    <input type="text" placeholder="Enter address" value="${value.replace(/"/g,'&quot;')}">
+    <input type="text" id="${inputId}" placeholder="Enter address" value="${value.replace(/"/g,'&quot;')}">
+    <button type="button" onclick="openPickLocationModal('${inputId}')" title="Pick saved location" style="background:#fff;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:.32rem .5rem;display:flex;align-items:center"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--teal)"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></button>
     <button type="button" class="btn-move btn-move-up" onclick="moveLocField(this,-1)" title="Move up" style="background:#fff;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;color:var(--text);font-size:.95rem;font-weight:700;padding:.35rem .55rem;line-height:1">↑</button>
     <button type="button" class="btn-move btn-move-down" onclick="moveLocField(this,1)" title="Move down" style="background:#fff;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;color:var(--text);font-size:.95rem;font-weight:700;padding:.35rem .55rem;line-height:1">↓</button>
     <button type="button" class="btn-remove" onclick="removeLocField(this)" title="Remove">✕</button>`;
@@ -2987,7 +3082,243 @@ function getLocFields(containerId) {
   return Array.from(inputs).map(i => i.value.trim()).filter(Boolean).join(' | ');
 }
 
-// ── TRIP CRUD ──────────────────────────────────────────────────────────────
+// ── FAVORITES: CUSTOMERS & LOCATIONS ────────────────────────────────────────
+let savedCustomers = [];
+let savedLocations = [];
+
+async function loadFavorites() {
+  const [{ data: customers }, { data: locations }] = await Promise.all([
+    sb.from('saved_customers').select('*').eq('user_id', currentUser.id).order('name'),
+    sb.from('saved_locations').select('*').eq('user_id', currentUser.id).order('label')
+  ]);
+  savedCustomers = customers || [];
+  savedLocations = locations || [];
+}
+
+function renderCustomersList() {
+  const el = document.getElementById('customers-list');
+  if (!savedCustomers.length) {
+    el.innerHTML = `<div style="text-align:center;color:var(--muted);padding:2rem 1rem">No saved customers yet.<br>Add one to quickly fill guest details when creating trips.</div>`;
+    return;
+  }
+  el.innerHTML = savedCustomers.map(c => `
+    <div class="trip-card" style="margin-bottom:.6rem">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-weight:700">${c.name}</div>
+          ${c.contact ? `<div style="font-size:.85rem;color:var(--muted)">${c.contact}</div>` : ''}
+          ${c.notes ? `<div style="font-size:.8rem;color:var(--muted);margin-top:.25rem">📝 ${c.notes}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:.4rem">
+          <button class="btn-sm" onclick="openCustomerModal('${c.id}')">Edit</button>
+          <button class="btn-sm danger" onclick="deleteCustomer('${c.id}')">Delete</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderLocationsList() {
+  const el = document.getElementById('locations-list');
+  if (!savedLocations.length) {
+    el.innerHTML = `<div style="text-align:center;color:var(--muted);padding:2rem 1rem">No saved locations yet.<br>Add frequent pickup/dropoff spots for quick selection.</div>`;
+    return;
+  }
+  el.innerHTML = savedLocations.map(l => `
+    <div class="trip-card" style="margin-bottom:.6rem">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-weight:700">📍 ${l.label}</div>
+          <div style="font-size:.85rem;color:var(--muted);margin-top:.15rem">${l.address}</div>
+        </div>
+        <div style="display:flex;gap:.4rem">
+          <button class="btn-sm" onclick="openLocationModal('${l.id}')">Edit</button>
+          <button class="btn-sm danger" onclick="deleteLocation('${l.id}')">Delete</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openCustomerModal(id = null) {
+  document.getElementById('customer-id').value = id || '';
+  if (id) {
+    const c = savedCustomers.find(c => c.id === id);
+    document.getElementById('customer-modal-title').textContent = 'Edit Customer';
+    document.getElementById('customer-name').value = c.name || '';
+    document.getElementById('customer-contact').value = c.contact || '';
+    document.getElementById('customer-notes').value = c.notes || '';
+  } else {
+    document.getElementById('customer-modal-title').textContent = 'Add Customer';
+    document.getElementById('customer-name').value = '';
+    document.getElementById('customer-contact').value = '';
+    document.getElementById('customer-notes').value = '';
+  }
+  openModal('customer-modal');
+}
+
+async function saveCustomer() {
+  const id = document.getElementById('customer-id').value;
+  const name = document.getElementById('customer-name').value.trim();
+  if (!name) return toast('Please enter a name', 'error');
+  const payload = {
+    user_id: currentUser.id,
+    name,
+    contact: document.getElementById('customer-contact').value.trim() || null,
+    notes: document.getElementById('customer-notes').value.trim() || null
+  };
+  const { error } = id
+    ? await sb.from('saved_customers').update(payload).eq('id', id)
+    : await sb.from('saved_customers').insert(payload);
+  if (error) return toast(error.message, 'error');
+  closeModal('customer-modal');
+  toast('Customer saved', 'success');
+  await loadFavorites();
+  renderCustomersList();
+}
+
+async function deleteCustomer(id) {
+  if (!confirm('Delete this saved customer?')) return;
+  await sb.from('saved_customers').delete().eq('id', id);
+  toast('Customer deleted', 'success');
+  await loadFavorites();
+  renderCustomersList();
+}
+
+function openLocationModal(id = null) {
+  document.getElementById('location-id').value = id || '';
+  if (id) {
+    const l = savedLocations.find(l => l.id === id);
+    document.getElementById('location-modal-title').textContent = 'Edit Location';
+    document.getElementById('location-label').value = l.label || '';
+    document.getElementById('location-address').value = l.address || '';
+  } else {
+    document.getElementById('location-modal-title').textContent = 'Add Location';
+    document.getElementById('location-label').value = '';
+    document.getElementById('location-address').value = '';
+  }
+  openModal('location-modal');
+}
+
+async function saveLocation() {
+  const id = document.getElementById('location-id').value;
+  const label = document.getElementById('location-label').value.trim();
+  const address = document.getElementById('location-address').value.trim();
+  if (!label || !address) return toast('Please fill in label and address', 'error');
+  const payload = { user_id: currentUser.id, label, address };
+  const { error } = id
+    ? await sb.from('saved_locations').update(payload).eq('id', id)
+    : await sb.from('saved_locations').insert(payload);
+  if (error) return toast(error.message, 'error');
+  closeModal('location-modal');
+  toast('Location saved', 'success');
+  await loadFavorites();
+  renderLocationsList();
+}
+
+async function deleteLocation(id) {
+  if (!confirm('Delete this saved location?')) return;
+  await sb.from('saved_locations').delete().eq('id', id);
+  toast('Location deleted', 'success');
+  await loadFavorites();
+  renderLocationsList();
+}
+
+// Quick-save a trip's guest name + first contact as a favorite customer
+async function saveTripGuestAsFavorite(tripId) {
+  const t = trips.find(t => t.id === tripId);
+  if (!t || !t.guest_name) return toast('No guest name to save', 'error');
+  const firstContact = (t.guest_contact || '').split(' | ').filter(Boolean)[0] || null;
+
+  // Check if a customer with the same name already exists
+  const existing = savedCustomers.find(c => c.name.toLowerCase() === t.guest_name.toLowerCase());
+  if (existing) {
+    if (!confirm(`"${t.guest_name}" is already saved. Update their contact info?`)) return;
+    const { error } = await sb.from('saved_customers').update({ contact: firstContact }).eq('id', existing.id);
+    if (error) return toast(error.message, 'error');
+    toast('Customer updated', 'success');
+  } else {
+    const { error } = await sb.from('saved_customers').insert({
+      user_id: currentUser.id,
+      name: t.guest_name,
+      contact: firstContact
+    });
+    if (error) return toast(error.message, 'error');
+    toast(`"${t.guest_name}" saved as favorite customer`, 'success');
+  }
+  await loadFavorites();
+}
+
+
+function pickSavedCustomer(id) {
+  const c = savedCustomers.find(c => c.id === id);
+  if (!c) return;
+  document.getElementById('t-name').value = c.name;
+  if (c.contact) {
+    const list = document.getElementById('t-contact-list');
+    const firstInput = list.querySelector('input');
+    if (firstInput) firstInput.value = c.contact;
+  }
+  closeModal('pick-customer-modal');
+}
+
+// Quick-pick a saved location into a pickup/dropoff field
+function pickSavedLocation(id, targetInputId) {
+  const l = savedLocations.find(l => l.id === id);
+  if (!l) return;
+  const input = document.getElementById(targetInputId);
+  if (input) input.value = l.address;
+  closeModal('pick-location-modal');
+}
+
+function openPickCustomerModal() {
+  if (!savedCustomers.length) {
+    toast('No saved customers yet — add some in Settings → Favorites', 'error');
+    return;
+  }
+  const listHtml = savedCustomers.map(c => `
+    <div class="loc-pick-row" onclick="pickSavedCustomer('${c.id}')" style="padding:.7rem .9rem;border:1.5px solid var(--border);border-radius:10px;margin-bottom:.5rem;cursor:pointer">
+      <div style="font-weight:700">${c.name}</div>
+      ${c.contact ? `<div style="font-size:.82rem;color:var(--muted)">${c.contact}</div>` : ''}
+    </div>
+  `).join('');
+  showPickerModal('pick-customer-modal', '👤 Select Customer', listHtml);
+}
+
+let pickLocationTarget = null;
+function openPickLocationModal(targetInputId) {
+  if (!savedLocations.length) {
+    toast('No saved locations yet — add some in Settings → Favorites', 'error');
+    return;
+  }
+  pickLocationTarget = targetInputId;
+  const listHtml = savedLocations.map(l => `
+    <div class="loc-pick-row" onclick="pickSavedLocation('${l.id}','${pickLocationTarget}')" style="padding:.7rem .9rem;border:1.5px solid var(--border);border-radius:10px;margin-bottom:.5rem;cursor:pointer">
+      <div style="font-weight:700">📍 ${l.label}</div>
+      <div style="font-size:.82rem;color:var(--muted)">${l.address}</div>
+    </div>
+  `).join('');
+  showPickerModal('pick-location-modal', '📍 Select Location', listHtml);
+}
+
+// Generic lightweight picker modal — creates if not present, reuses if present
+function showPickerModal(id, title, bodyHtml) {
+  let modal = document.getElementById(id);
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = id;
+    modal.innerHTML = `<div class="modal" style="max-width:420px">
+      <div class="modal-header"><h2>${title}</h2><button class="modal-close" onclick="closeModal('${id}')">✕</button></div>
+      <div class="modal-body" id="${id}-body"></div>
+    </div>`;
+    document.body.appendChild(modal);
+  }
+  document.getElementById(id + '-body').innerHTML = bodyHtml;
+  openModal(id);
+}
+
+
 // ── TRIP TYPE ──────────────────────────────────────────────────────────────
 function setTripType(type) {
   document.getElementById('t-trip-type').value = type;
