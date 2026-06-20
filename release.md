@@ -2,6 +2,21 @@
 
 ---
 
+## v5.0 — 19 June 2026
+
+### ⭐ Favorites — Saved Customers & Locations
+- New **Favorites** section in Settings (Account → **Favorites** → Data → Notifications → Support → Account Actions)
+- **Saved Customers**: name, contact, notes — add/edit/delete
+- **Saved Locations**: label, address — add/edit/delete
+- Trip form: address-book icon next to Guest Name opens a picker → fills name + contact
+- Trip form: map-pin icon on each pickup/dropoff row opens a picker → fills that address
+- Trip card: **📇 Save Customer** button quick-saves the guest as a favorite (updates contact if name already saved)
+
+### 🗂️ Settings Reorganization
+- Log Out moved into its own "Account Actions" section, styled consistently, placed last
+
+---
+
 ## v4.9 — 19 June 2026
 
 ### 📍 Trip Locations
