@@ -2,6 +2,14 @@
 
 ---
 
+## v5.1 — 23 June 2026
+
+### 🧾 Receipt Copy & UX
+- Replaced native `confirm()` after marking trip complete with a custom styled modal: "Trip Completed! Share a receipt now?" with **No need** / **Ok** buttons
+- Receipt modal export button renamed from "Export PDF" to **Share Receipt** with a proper share icon (since it shares an image via the native share sheet, not a PDF export)
+
+---
+
 ## v5.0 — 19 June 2026
 
 ### ⭐ Favorites — Saved Customers & Locations
