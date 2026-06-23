@@ -1258,6 +1258,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
+<!-- RECEIPT PROMPT MODAL -->
+<div class="modal-overlay" id="receipt-prompt-modal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-body" style="text-align:center;padding-top:1.5rem">
+      <div style="font-size:2.2rem;margin-bottom:.5rem">✅</div>
+      <h2 style="margin-bottom:.4rem" id="receipt-prompt-title">Trip Completed!</h2>
+      <p style="color:var(--muted);font-size:.9rem" id="receipt-prompt-body">Share a receipt now?</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('receipt-prompt-modal')">No need</button>
+      <button class="btn-save" id="receipt-prompt-ok">Ok</button>
+    </div>
+  </div>
+</div>
+
 <!-- BUSY TIME MODAL -->
 <div class="modal-overlay" id="busy-modal">
   <div class="modal" style="max-width:420px">
@@ -1597,7 +1612,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal('receipt-modal')">Cancel</button>
-      <button class="btn-save" onclick="exportReceiptPDF()">📄 Export PDF</button>
+      <button class="btn-save" onclick="exportReceiptPDF()" style="display:flex;align-items:center;justify-content:center;gap:.4rem"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Share Receipt</button>
     </div>
   </div>
 </div>
@@ -3672,6 +3687,17 @@ async function saveTrip() {
 
 function editTrip(id) { openTripModal(trips.find(t => t.id === id)); }
 
+// Custom receipt prompt modal (replaces native confirm with styled buttons)
+function promptReceipt(tripId, message) {
+  document.getElementById('receipt-prompt-body').textContent = message;
+  const okBtn = document.getElementById('receipt-prompt-ok');
+  okBtn.onclick = () => {
+    closeModal('receipt-prompt-modal');
+    openReceiptModal(tripId);
+  };
+  openModal('receipt-prompt-modal');
+}
+
 async function markComplete(id) {
   if (guardReadOnly()) return;
   const trip = trips.find(t => t.id === id);
@@ -3698,14 +3724,14 @@ async function markComplete(id) {
     }).eq('id', id);
     toast(`Completed! Final charge: RM ${finalCharge}`, 'success');
     await loadAll();
-    if (confirm(`Trip completed! Final: RM ${finalCharge}\n\nWould you like to print a receipt?`)) openReceiptModal(id);
+    promptReceipt(id, `Final: RM ${finalCharge} — Share a receipt now?`);
     return;
   }
 
   await sb.from('trips').update({ status: 'completed', completed: true }).eq('id', id);
   toast('Marked as completed', 'success');
   await loadAll();
-  if (confirm('Trip completed! Would you like to print a receipt?')) openReceiptModal(id);
+  promptReceipt(id, 'Share a receipt now?');
 }
 async function markPaid(id) {
   if (guardReadOnly()) return;
