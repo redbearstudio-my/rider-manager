@@ -2,6 +2,15 @@
 
 ---
 
+## v5.2 — 23 June 2026
+
+### 👑 Admin Payment Tracking
+- **💰 Renew** button (with full payment form — amount, months, date, notes, custom expiry) added to Admin → Users tab, previously only in Subscriptions tab
+- +1M/+3M/+6M/+12M/Forever remain as no-payment quick extensions (goodwill/free)
+- Reminder: rider's own payment history visible in Settings → Subscription; admin sees all payments in Admin → Payment History tab
+
+---
+
 ## v5.1 — 23 June 2026
 
 ### 🧾 Receipt Copy & UX
