@@ -2528,6 +2528,7 @@ async function renderUsersTab() {
           <div class="user-email">${p.email||'—'}${p.phone ? ` &nbsp;·&nbsp; 📱 ${p.phone}` : ''}</div>
           <div class="user-meta">Joined: ${joinDate}${expiryInfo?` &nbsp;·&nbsp; ${expiryInfo}`:''}</div>
           <div class="admin-actions" style="margin-top:.5rem">
+            <button class="admin-btn approve" style="background:#0e7490;color:#fff;border-color:#0e7490" onclick="openPaymentModal('${p.id}','${(p.name||'').replace(/'/g,"\\'")}','${p.email||''}','${p.subscription_expiry_date||''}')">💰 Renew</button>
             <button class="admin-btn approve" onclick="renewUser('${p.id}',1)">+1M</button>
             <button class="admin-btn approve" onclick="renewUser('${p.id}',3)">+3M</button>
             <button class="admin-btn approve" onclick="renewUser('${p.id}',6)">+6M</button>
