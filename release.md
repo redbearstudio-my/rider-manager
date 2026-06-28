@@ -2,6 +2,18 @@
 
 ---
 
+## v5.3 — 28 June 2026
+
+### 📅 Calendar UX
+- Trip/busy-time dots replaced with number badges showing the exact count (previously capped visually at 3 dots, so 4+ trips looked the same as 3)
+
+### 🔔 Notifications (SQL)
+- Expiry reminders now send **both** email and push notification (previously email-only)
+- Expiry day-count switched from exact-hours countdown to clean calendar-day difference in MYT (e.g. 25→27 June now correctly shows 2 days, not 3)
+- Admin gets notified by email + push whenever a new user signs up — safely wrapped in exception handling so it can never block signups
+
+---
+
 ## v5.2 — 23 June 2026
 
 ### 👑 Admin Payment Tracking
