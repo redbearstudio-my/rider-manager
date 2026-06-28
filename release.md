@@ -2,6 +2,14 @@
 
 ---
 
+## v5.4 — 28 June 2026
+
+### 🐛 Bug Fix
+- Floating add button (FAB) now opens the correct modal per page: "Add Customer" on Saved Customers, "Add Location" on Saved Locations — previously always opened New Trip regardless of page
+- FAB hidden on Settings and Subscription pages where no add action applies
+
+---
+
 ## v5.3 — 28 June 2026
 
 ### 📅 Calendar UX
