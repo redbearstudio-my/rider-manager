@@ -242,6 +242,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .dot{width:6px;height:6px;border-radius:50%}
 .dot-trip{background:var(--teal)}
 .dot-busy{background:var(--danger)}
+.cal-badge{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:8px;font-size:.62rem;font-weight:700;color:#fff;padding:0 .25rem;line-height:1}
+.cal-badge-trip{background:var(--teal)}
+.cal-badge-busy{background:var(--danger)}
 .cal-month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
 .cal-month-nav h2{font-size:1.05rem;font-weight:700}
 .btn-nav{width:34px;height:34px;border-radius:50%;border:1px solid var(--border);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
@@ -3783,8 +3786,8 @@ function renderCalendar() {
     html += `<div class="cal-day${isToday?' today':''}${isSel?' selected':''}" onclick="selectCalDay('${key}')">
       <div class="cal-day-num">${d}</div>
       <div class="cal-dot">
-        ${tArr.slice(0,3).map(() => '<span class="dot dot-trip"></span>').join('')}
-        ${bArr.slice(0,2).map(() => '<span class="dot dot-busy"></span>').join('')}
+        ${tArr.length ? `<span class="cal-badge cal-badge-trip">${tArr.length}</span>` : ''}
+        ${bArr.length ? `<span class="cal-badge cal-badge-busy">${bArr.length}</span>` : ''}
       </div>
     </div>`;
   }
