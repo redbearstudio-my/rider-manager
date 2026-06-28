@@ -1950,12 +1950,23 @@ function navigate(page) {
   if (page === 'subscription') renderSettingsSubscription();
   if (page === 'favorites-customers') renderCustomersList();
   if (page === 'favorites-locations') renderLocationsList();
-  // FAB: on calendar open busy modal, on other pages open trip modal
+  // FAB: on calendar open busy modal, on favorites open add customer/location, on other pages open trip modal
   const fab = document.getElementById('fab-btn');
   if (page === 'calendar') {
+    fab.style.display = 'flex';
     fab.title = 'New Busy Time';
     fab.onclick = () => openBusyModal();
   } else if (page === 'admin') {
+    fab.style.display = 'none';
+  } else if (page === 'favorites-customers') {
+    fab.style.display = 'flex';
+    fab.title = 'Add Customer';
+    fab.onclick = () => openCustomerModal();
+  } else if (page === 'favorites-locations') {
+    fab.style.display = 'flex';
+    fab.title = 'Add Location';
+    fab.onclick = () => openLocationModal();
+  } else if (page === 'settings' || page === 'subscription') {
     fab.style.display = 'none';
   } else {
     fab.style.display = 'flex';
