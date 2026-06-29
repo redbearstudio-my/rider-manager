@@ -2548,6 +2548,7 @@ async function renderUsersTab() {
               ? `<button class="admin-btn" style="border-color:#7c3aed;color:#7c3aed" onclick="adminSendPush('${p.id}','${(p.name||'Unknown').replace(/'/g,"\\'")}')">🔔 Push</button>`
               : `<button class="admin-btn" style="border-color:#d1d5db;color:#d1d5db;cursor:not-allowed" title="User has not enabled push notifications">🔔 Push</button>`
             }
+            <button class="admin-btn" style="border-color:#ea580c;color:#ea580c" onclick="adminSignOutUser('${p.id}','${(p.name||'Unknown').replace(/'/g,"\\'")}')">🚪 Sign Out</button>
           </div>
         </div>
       </div>
@@ -2669,6 +2670,25 @@ async function adminTestPushSelf() {
   });
   if (!res1.ok) { const e = await res1.json(); toast('Push failed: ' + (e.error||res1.status), 'error'); return; }
   toast('Test push sent!', 'success');
+}
+
+async function adminSignOutUser(userId, name) {
+  if (!confirm(`Force sign out "${name}"? They will need to log in again on all their devices.`)) return;
+  try {
+    const res = await fetch('https://gqavlaetwrvyugrqarcz.supabase.co/functions/v1/admin-signout-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, admin_check: 'rider-manager-admin-2026' })
+    });
+    const data = await res.json();
+    if (data.error) {
+      toast('Sign out failed: ' + data.error, 'error');
+    } else {
+      toast(`${name} signed out — they'll need to log in again`, 'success');
+    }
+  } catch(e) {
+    toast('Sign out failed: ' + e.message, 'error');
+  }
 }
 
 async function adminSendPush(userId, name) {
