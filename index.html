@@ -1623,6 +1623,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 const SUPA_URL = 'https://gqavlaetwrvyugrqarcz.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxYXZsYWV0d3J2eXVncnFhcmN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNzA1NTcsImV4cCI6MjA5MTY0NjU1N30.QlEt3hevzpoEDy_RkCJsMW4Oyv9Jbp4-GuC_v-yUUXQ';
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// Wraps any promise with a timeout — prevents indefinite hangs on slow/blocked networks
+function withTimeout(promise, ms = 10000, label = 'request') {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms))
+  ]);
+}
 const ADMIN_EMAIL = 'redbear.my@gmail.com';
 
 let appSettings = {};
@@ -1652,20 +1660,22 @@ function guardReadOnly() {
 async function initApp(user) {
   console.log('initApp started', user?.email);
   currentUser = user;
-  try { await loadProfile(); console.log('loadProfile done'); } catch(e) { console.error('loadProfile error:', e); }
-  try { await loadAppSettings(); console.log('loadAppSettings done'); } catch(e) { console.error('loadAppSettings error:', e); }
+  try { await withTimeout(loadProfile(), 8000, 'loadProfile'); console.log('loadProfile done'); } catch(e) { console.error('loadProfile error:', e); }
+  try { await withTimeout(loadAppSettings(), 8000, 'loadAppSettings'); console.log('loadAppSettings done'); } catch(e) { console.error('loadAppSettings error:', e); }
 
   // Admin always gets full access
   if (user.email === ADMIN_EMAIL) {
     console.log('admin path');
     showApp();
-    try { await loadAll(); } catch(e) { console.warn('loadAll error:', e); }
+    try { await withTimeout(loadAll(), 10000, 'loadAll'); } catch(e) { console.warn('loadAll error:', e); }
     document.getElementById('nav-admin').style.display = 'flex';
     document.getElementById('bnav-admin').style.display = 'flex';
-    const { data: newUsers } = await sb.from('profiles')
-      .select('id')
-      .gt('trial_start_date', new Date(Date.now() - 24*60*60*1000).toISOString());
-    if (newUsers?.length) updateAdminBadge(newUsers.length);
+    try {
+      const { data: newUsers } = await withTimeout(sb.from('profiles')
+        .select('id')
+        .gt('trial_start_date', new Date(Date.now() - 24*60*60*1000).toISOString()), 8000, 'newUsers check');
+      if (newUsers?.length) updateAdminBadge(newUsers.length);
+    } catch(e) { console.warn('newUsers check error:', e); }
     return;
   }
 
@@ -1682,15 +1692,15 @@ async function initApp(user) {
   if (isNewUser) {
     console.log('showing onboarding');
     showApp();
-    try { await loadAll(); } catch(e) {}
+    try { await withTimeout(loadAll(), 10000, 'loadAll'); } catch(e) {}
     showOnboarding();
     return;
   }
 
-  try { await checkSubscriptionAccess(); console.log('subscription check done'); } catch(e) { console.warn('subscription check error:', e); }
+  try { await withTimeout(checkSubscriptionAccess(), 8000, 'checkSubscriptionAccess'); console.log('subscription check done'); } catch(e) { console.warn('subscription check error:', e); }
   console.log('calling showApp');
   showApp();
-  try { await loadAll(); } catch(e) { console.warn('loadAll error:', e); }
+  try { await withTimeout(loadAll(), 10000, 'loadAll'); } catch(e) { console.warn('loadAll error:', e); }
   console.log('initApp complete');
 }
 
@@ -4885,7 +4895,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
 
 (async () => {
   try {
-    const { data: { session } } = await sb.auth.getSession();
+    const { data: { session } } = await withTimeout(sb.auth.getSession(), 8000, 'getSession');
     if (session?.user) {
       await initApp(session.user);
     } else {
