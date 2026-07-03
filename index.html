@@ -3778,7 +3778,7 @@ function renderCalendar() {
 
   // Build trip & busy maps
   const tripMap = {}, busyMap = {};
-  trips.forEach(t => { const k = t.date; if (!tripMap[k]) tripMap[k]=[]; tripMap[k].push(t); });
+  trips.filter(t => !t.cancelled).forEach(t => { const k = t.date; if (!tripMap[k]) tripMap[k]=[]; tripMap[k].push(t); });
   busyTimes.forEach(b => { const k = b.date; if (!busyMap[k]) busyMap[k]=[]; busyMap[k].push(b); });
 
   let html = '';
@@ -3825,7 +3825,7 @@ function showCalDetail(key) {
       </div>`).join('')
     : '';
   // Trips
-  const tArr = trips.filter(t => t.date === key);
+  const tArr = trips.filter(t => t.date === key && !t.cancelled);
   document.getElementById('cal-trips-list').innerHTML = tArr.length
     ? `<div style="font-size:.8rem;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:.05em;margin:${bArr.length ? '.75rem' : '0'} 0 .4rem">Trips</div>`
       + tArr.map(t => `<div style="background:#f0fdff;border:1px solid #a5f3fc;border-radius:var(--radius-sm);padding:.625rem .875rem;margin-bottom:.375rem">
