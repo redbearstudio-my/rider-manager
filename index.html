@@ -14,8 +14,8 @@
 <meta name="release-date" content="2026-06-05">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Rider Manager v5.0</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -1623,6 +1623,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 const SUPA_URL = 'https://gqavlaetwrvyugrqarcz.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxYXZsYWV0d3J2eXVncnFhcmN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNzA1NTcsImV4cCI6MjA5MTY0NjU1N30.QlEt3hevzpoEDy_RkCJsMW4Oyv9Jbp4-GuC_v-yUUXQ';
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// Wraps any promise with a timeout — prevents indefinite hangs on slow/blocked networks
+function withTimeout(promise, ms = 10000, label = 'request') {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms))
+  ]);
+}
 const ADMIN_EMAIL = 'redbear.my@gmail.com';
 
 let appSettings = {};
@@ -1652,20 +1660,22 @@ function guardReadOnly() {
 async function initApp(user) {
   console.log('initApp started', user?.email);
   currentUser = user;
-  try { await loadProfile(); console.log('loadProfile done'); } catch(e) { console.error('loadProfile error:', e); }
-  try { await loadAppSettings(); console.log('loadAppSettings done'); } catch(e) { console.error('loadAppSettings error:', e); }
+  try { await withTimeout(loadProfile(), 8000, 'loadProfile'); console.log('loadProfile done'); } catch(e) { console.error('loadProfile error:', e); }
+  try { await withTimeout(loadAppSettings(), 8000, 'loadAppSettings'); console.log('loadAppSettings done'); } catch(e) { console.error('loadAppSettings error:', e); }
 
   // Admin always gets full access
   if (user.email === ADMIN_EMAIL) {
     console.log('admin path');
     showApp();
-    try { await loadAll(); } catch(e) { console.warn('loadAll error:', e); }
+    try { await withTimeout(loadAll(), 10000, 'loadAll'); } catch(e) { console.warn('loadAll error:', e); }
     document.getElementById('nav-admin').style.display = 'flex';
     document.getElementById('bnav-admin').style.display = 'flex';
-    const { data: newUsers } = await sb.from('profiles')
-      .select('id')
-      .gt('trial_start_date', new Date(Date.now() - 24*60*60*1000).toISOString());
-    if (newUsers?.length) updateAdminBadge(newUsers.length);
+    try {
+      const { data: newUsers } = await withTimeout(sb.from('profiles')
+        .select('id')
+        .gt('trial_start_date', new Date(Date.now() - 24*60*60*1000).toISOString()), 8000, 'newUsers check');
+      if (newUsers?.length) updateAdminBadge(newUsers.length);
+    } catch(e) { console.warn('newUsers check error:', e); }
     return;
   }
 
@@ -1682,15 +1692,15 @@ async function initApp(user) {
   if (isNewUser) {
     console.log('showing onboarding');
     showApp();
-    try { await loadAll(); } catch(e) {}
+    try { await withTimeout(loadAll(), 10000, 'loadAll'); } catch(e) {}
     showOnboarding();
     return;
   }
 
-  try { await checkSubscriptionAccess(); console.log('subscription check done'); } catch(e) { console.warn('subscription check error:', e); }
+  try { await withTimeout(checkSubscriptionAccess(), 8000, 'checkSubscriptionAccess'); console.log('subscription check done'); } catch(e) { console.warn('subscription check error:', e); }
   console.log('calling showApp');
   showApp();
-  try { await loadAll(); } catch(e) { console.warn('loadAll error:', e); }
+  try { await withTimeout(loadAll(), 10000, 'loadAll'); } catch(e) { console.warn('loadAll error:', e); }
   console.log('initApp complete');
 }
 
@@ -2548,7 +2558,6 @@ async function renderUsersTab() {
               ? `<button class="admin-btn" style="border-color:#7c3aed;color:#7c3aed" onclick="adminSendPush('${p.id}','${(p.name||'Unknown').replace(/'/g,"\\'")}')">🔔 Push</button>`
               : `<button class="admin-btn" style="border-color:#d1d5db;color:#d1d5db;cursor:not-allowed" title="User has not enabled push notifications">🔔 Push</button>`
             }
-            <button class="admin-btn" style="border-color:#ea580c;color:#ea580c" onclick="adminSignOutUser('${p.id}','${(p.name||'Unknown').replace(/'/g,"\\'")}')">🚪 Sign Out</button>
           </div>
         </div>
       </div>
@@ -2670,25 +2679,6 @@ async function adminTestPushSelf() {
   });
   if (!res1.ok) { const e = await res1.json(); toast('Push failed: ' + (e.error||res1.status), 'error'); return; }
   toast('Test push sent!', 'success');
-}
-
-async function adminSignOutUser(userId, name) {
-  if (!confirm(`Force sign out "${name}"? They will need to log in again on all their devices.`)) return;
-  try {
-    const res = await fetch('https://gqavlaetwrvyugrqarcz.supabase.co/functions/v1/admin-signout-user', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId, admin_check: 'rider-manager-admin-2026' })
-    });
-    const data = await res.json();
-    if (data.error) {
-      toast('Sign out failed: ' + data.error, 'error');
-    } else {
-      toast(`${name} signed out — they'll need to log in again`, 'success');
-    }
-  } catch(e) {
-    toast('Sign out failed: ' + e.message, 'error');
-  }
 }
 
 async function adminSendPush(userId, name) {
@@ -3788,7 +3778,7 @@ function renderCalendar() {
 
   // Build trip & busy maps
   const tripMap = {}, busyMap = {};
-  trips.forEach(t => { const k = t.date; if (!tripMap[k]) tripMap[k]=[]; tripMap[k].push(t); });
+  trips.filter(t => !t.cancelled).forEach(t => { const k = t.date; if (!tripMap[k]) tripMap[k]=[]; tripMap[k].push(t); });
   busyTimes.forEach(b => { const k = b.date; if (!busyMap[k]) busyMap[k]=[]; busyMap[k].push(b); });
 
   let html = '';
@@ -4905,7 +4895,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
 
 (async () => {
   try {
-    const { data: { session } } = await sb.auth.getSession();
+    const { data: { session } } = await withTimeout(sb.auth.getSession(), 8000, 'getSession');
     if (session?.user) {
       await initApp(session.user);
     } else {
