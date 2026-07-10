@@ -1952,6 +1952,8 @@ function navigate(page) {
   document.querySelectorAll('.nav-item,.bnav').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
   document.querySelectorAll(`[onclick="navigate('${page}')"]`).forEach(n => n.classList.add('active'));
+  // Push history so Android back button returns to previous page
+  history.pushState({ page }, '');
   if (page === 'calendar') renderCalendar();
   if (page === 'admin') renderAdminPanel();
   if (page === 'settings') { renderSettingsSubscription(); renderSettingsNotifications(); }
@@ -4648,8 +4650,9 @@ function closeModal(id) {
   if (history.state?.modal === id) history.back();
 }
 
-// Android back button — close the topmost open modal instead of leaving the app
+// Android back button — close modal or navigate back to previous page
 window.addEventListener('popstate', (e) => {
+  // If a modal was open, close it
   if (e.state?.modal) {
     const modal = document.getElementById(e.state.modal);
     if (modal?.classList.contains('open')) {
@@ -4661,11 +4664,25 @@ window.addEventListener('popstate', (e) => {
       return;
     }
   }
-  // No modal was open — check if any modal is open and close it
-  const openModal = document.querySelector('.modal-overlay.open');
-  if (openModal) {
-    openModal.classList.remove('open');
-    history.pushState(null, ''); // restore state so back still works
+  // Check if any modal is open and close it
+  const openModalEl = document.querySelector('.modal-overlay.open');
+  if (openModalEl) {
+    openModalEl.classList.remove('open');
+    history.pushState(null, '');
+    return;
+  }
+  // Navigate to previous page if state has one
+  if (e.state?.page) {
+    navigate(e.state.page);
+    return;
+  }
+  // Sub-pages: go back to settings or home
+  const activePage = document.querySelector('.page.active');
+  if (activePage) {
+    const pageId = activePage.id.replace('page-', '');
+    if (['favorites-customers', 'favorites-locations', 'subscription'].includes(pageId)) {
+      navigate('settings');
+    }
   }
 });
 
