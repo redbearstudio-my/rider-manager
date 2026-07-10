@@ -531,6 +531,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       </div>
       <div class="search-bar">
         <input class="search-input" type="text" id="trip-search" placeholder="Search by name, location, contact..." oninput="renderTrips()">
+        <button id="trip-sort-btn" onclick="toggleTripSort()" style="display:none;background:#fff;border:1.5px solid var(--border);border-radius:8px;padding:.35rem .65rem;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--text)">⬇ Latest</button>
       </div>
       <div class="tabs">
         <button class="tab active" onclick="setTripTab('upcoming',this)">Upcoming</button>
@@ -1638,7 +1639,7 @@ let isReadOnly = false;
 let currentUser = null, userProfile = null;
 let trips = [], expenses = [], busyTimes = [];
 let calDate = new Date(), calSelected = null;
-let tripTab = 'upcoming', reportPeriod = 'week';
+let tripTab = 'upcoming', reportPeriod = 'week', historyNewest = true;
 let expActiveCat = 'All';
 let adminFilter = 'all';
 let selectedUsers = new Set();
@@ -2905,6 +2906,23 @@ function setTripTab(tab, el) {
   tripTab = tab;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
+  // Show sort button only on history and cancelled tabs
+  const sortBtn = document.getElementById('trip-sort-btn');
+  if (sortBtn) {
+    if (tab === 'history' || tab === 'cancelled') {
+      sortBtn.style.display = '';
+      sortBtn.textContent = historyNewest ? '⬇ Latest' : '⬆ Oldest';
+    } else {
+      sortBtn.style.display = 'none';
+    }
+  }
+  renderTrips();
+}
+
+function toggleTripSort() {
+  historyNewest = !historyNewest;
+  const btn = document.getElementById('trip-sort-btn');
+  if (btn) btn.textContent = historyNewest ? '⬇ Latest' : '⬆ Oldest';
   renderTrips();
 }
 
@@ -2921,8 +2939,12 @@ function renderTrips() {
     (t.pickup_locations || '').toLowerCase().includes(q) ||
     (t.dropoff_locations || '').toLowerCase().includes(q)
   );
-  if (tripTab === 'upcoming' || tripTab === 'history') list.sort((a,b) => new Date(a.date+'T'+a.time) - new Date(b.date+'T'+b.time));
-  else list.sort((a,b) => new Date(b.date+'T'+b.time) - new Date(a.date+'T'+a.time));
+  if (tripTab === 'upcoming') list.sort((a,b) => new Date(a.date+'T'+a.time) - new Date(b.date+'T'+b.time));
+  else if (tripTab === 'history' || tripTab === 'cancelled') {
+    list.sort((a,b) => historyNewest
+      ? new Date(b.date+'T'+b.time) - new Date(a.date+'T'+a.time)
+      : new Date(a.date+'T'+a.time) - new Date(b.date+'T'+b.time));
+  } else list.sort((a,b) => new Date(b.date+'T'+b.time) - new Date(a.date+'T'+a.time));
   document.getElementById('trips-list').innerHTML = list.length ? list.map(tripCard).join('') : emptyState('No trips found');
 }
 
