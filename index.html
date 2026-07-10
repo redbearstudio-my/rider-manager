@@ -1974,9 +1974,7 @@ function navigate(page) {
     fab.title = 'Add Location';
     fab.onclick = () => openLocationModal();
   } else if (page === 'expense') {
-    fab.style.display = 'flex';
-    fab.title = 'Add Expense';
-    fab.onclick = () => openExpenseModal();
+    fab.style.display = 'none';
   } else if (page === 'settings' || page === 'subscription') {
     fab.style.display = 'none';
   } else {
