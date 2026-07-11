@@ -4640,35 +4640,30 @@ function openModal(id) {
   // Push a history entry so Android back button closes the modal instead of leaving the app
   history.pushState({ modal: id }, '');
 }
-function closeModal(id) {
+function closeModal(id, fromPopstate = false) {
   document.getElementById(id).classList.remove('open');
   if (id === 'trip-modal' && window._hourlyPollInterval) {
     clearInterval(window._hourlyPollInterval);
     window._hourlyPollInterval = null;
   }
-  // If the history state points to this modal, go back to clean it up
-  if (history.state?.modal === id) history.back();
+  // Only go back in history if this close was triggered by code (not by popstate itself)
+  if (!fromPopstate && history.state?.modal === id) history.back();
 }
 
 // Android back button — close modal or navigate back to previous page
 window.addEventListener('popstate', (e) => {
-  // If a modal was open, close it
+  // If state points to a specific modal, close it (fromPopstate=true to avoid history.back loop)
   if (e.state?.modal) {
     const modal = document.getElementById(e.state.modal);
     if (modal?.classList.contains('open')) {
-      modal.classList.remove('open');
-      if (e.state.modal === 'trip-modal' && window._hourlyPollInterval) {
-        clearInterval(window._hourlyPollInterval);
-        window._hourlyPollInterval = null;
-      }
+      closeModal(e.state.modal, true);
       return;
     }
   }
-  // Check if any modal is open and close it
+  // Close any open modal
   const openModalEl = document.querySelector('.modal-overlay.open');
   if (openModalEl) {
     openModalEl.classList.remove('open');
-    history.pushState(null, '');
     return;
   }
   // Navigate to previous page if state has one
@@ -4676,7 +4671,7 @@ window.addEventListener('popstate', (e) => {
     navigate(e.state.page);
     return;
   }
-  // Sub-pages: go back to settings or home
+  // Sub-pages: go back to settings
   const activePage = document.querySelector('.page.active');
   if (activePage) {
     const pageId = activePage.id.replace('page-', '');
