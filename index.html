@@ -3324,7 +3324,8 @@ function pickSavedCustomer(id) {
     const firstInput = list.querySelector('input');
     if (firstInput) firstInput.value = c.contact;
   }
-  closeModal('pick-customer-modal');
+  // Close picker without history.back (it was opened without pushing history)
+  document.getElementById('pick-customer-modal').classList.remove('open');
 }
 
 // Quick-pick a saved location into a pickup/dropoff field
@@ -3333,7 +3334,8 @@ function pickSavedLocation(id, targetInputId) {
   if (!l) return;
   const input = document.getElementById(targetInputId);
   if (input) input.value = l.address;
-  closeModal('pick-location-modal');
+  // Close picker without history.back (it was opened without pushing history)
+  document.getElementById('pick-location-modal').classList.remove('open');
 }
 
 function openPickCustomerModal() {
@@ -3380,7 +3382,8 @@ function showPickerModal(id, title, bodyHtml) {
     document.body.appendChild(modal);
   }
   document.getElementById(id + '-body').innerHTML = bodyHtml;
-  openModal(id);
+  // Open picker without pushing history (it's a sub-modal on top of trip modal)
+  document.getElementById(id).classList.add('open');
 }
 
 
