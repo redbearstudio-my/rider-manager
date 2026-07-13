@@ -2481,7 +2481,7 @@ async function renderUsersTab() {
 
   const [{ data: profiles, error }, { data: tripCounts }] = await Promise.all([
     sb.from('profiles').select('*'),
-    sb.from('trips').select('user_id').neq('status', 'cancelled')
+    sb.from('trips').select('user_id').eq('cancelled', false)
   ]);
   if (error) { toast('Admin error: ' + error.message, 'error'); return; }
   if (!profiles || !profiles.length) {
