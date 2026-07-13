@@ -2479,9 +2479,9 @@ async function loadAdminStats() {
 
 async function renderUsersTab() {
 
-  const [{ data: profiles, error }, { data: tripCounts }] = await Promise.all([
+  const [{ data: profiles, error }, { data: tripCountData }] = await Promise.all([
     sb.from('profiles').select('*'),
-    sb.from('trips').select('user_id').eq('cancelled', false)
+    sb.rpc('get_trip_counts_per_user')
   ]);
   if (error) { toast('Admin error: ' + error.message, 'error'); return; }
   if (!profiles || !profiles.length) {
@@ -2491,8 +2491,8 @@ async function renderUsersTab() {
 
   // Build trip count map per user
   const tripCountMap = {};
-  (tripCounts || []).forEach(t => {
-    tripCountMap[t.user_id] = (tripCountMap[t.user_id] || 0) + 1;
+  (tripCountData || []).forEach(r => {
+    tripCountMap[r.user_id] = r.trip_count;
   });
 
   const now = new Date();
