@@ -2479,12 +2479,21 @@ async function loadAdminStats() {
 
 async function renderUsersTab() {
 
-  const { data: profiles, error } = await sb.from('profiles').select('*');
+  const [{ data: profiles, error }, { data: tripCounts }] = await Promise.all([
+    sb.from('profiles').select('*'),
+    sb.from('trips').select('user_id').neq('status', 'cancelled')
+  ]);
   if (error) { toast('Admin error: ' + error.message, 'error'); return; }
   if (!profiles || !profiles.length) {
     document.getElementById('admin-users-list').innerHTML = '<p style="color:var(--muted)">No users found.</p>';
     return;
   }
+
+  // Build trip count map per user
+  const tripCountMap = {};
+  (tripCounts || []).forEach(t => {
+    tripCountMap[t.user_id] = (tripCountMap[t.user_id] || 0) + 1;
+  });
 
   const now = new Date();
   const reminderDays = parseInt(appSettings.expiry_reminder_days || '7');
@@ -2554,7 +2563,7 @@ async function renderUsersTab() {
             <span class="status-badge ${statusClasses[st]}">${statusLabels[st]}</span>
           </div>
           <div class="user-email">${p.email||'—'}${p.phone ? ` &nbsp;·&nbsp; 📱 ${p.phone}` : ''}</div>
-          <div class="user-meta">Joined: ${joinDate}${expiryInfo?` &nbsp;·&nbsp; ${expiryInfo}`:''}</div>
+          <div class="user-meta">Joined: ${joinDate}${expiryInfo?` &nbsp;·&nbsp; ${expiryInfo}`:''} &nbsp;·&nbsp; 🚗 ${tripCountMap[p.id] || 0} trips</div>
           <div class="admin-actions" style="margin-top:.5rem">
             <button class="admin-btn approve" style="background:#0e7490;color:#fff;border-color:#0e7490" onclick="openPaymentModal('${p.id}','${(p.name||'').replace(/'/g,"\\'")}','${p.email||''}','${p.subscription_expiry_date||''}')">💰 Renew</button>
             <button class="admin-btn approve" onclick="renewUser('${p.id}',1)">+1M</button>
