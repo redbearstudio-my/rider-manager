@@ -4817,14 +4817,14 @@ function exportReceiptPDF() {
 
   const receiptHTML = `<div id="rc" style="font-family:Arial,sans-serif;width:400px;padding:16px;background:#fff;font-size:13px;color:#000;font-variant-ligatures:none">
   <div style="border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:10px">
-    <div style="font-size:22px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;text-align:center;width:100%">Taxi &amp; Limo Service</div>
+    <div style="font-size:22px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;text-align:center;width:100%;display:block">TAXI &amp; LIMO SERVICE</div>
   </div>
   <div style="margin:6px 0">Date: ${dateStr} &nbsp; Time: ${time}</div>
   <div style="margin:7px 0">${box(chk('rc-taxi'))} <b>TAXI</b> &nbsp; ${box(chk('rc-limo'))} <b>LIMO</b> &nbsp; ${box(chk('rc-exec'))} <b>EXECUTIVE TAXI</b></div>
   <div style="margin:7px 0">${box(chk('rc-oneway'))} <b>ONE WAY</b> &nbsp; ${box(chk('rc-twoway'))} <b>TWO WAY</b> &nbsp; ${box(chk('rc-teksim'))} <b>TEKSIM</b></div>
-  <div style="margin:8px 0"><b>From:</b> <span style="min-width:220px;display:inline-block">${t.pickup_locations||''}</span></div>
-  <div style="margin:8px 0"><b>&nbsp;&nbsp;&nbsp;&nbsp;to</b> <span style="min-width:220px;display:inline-block">${t.dropoff_locations||''}</span></div>
-  ${showDriver ? `<div style="margin:8px 0"><b>Issued by:</b> <span style="min-width:110px;display:inline-block">${userProfile?.name||''}</span> &nbsp; <b>Taxi Fare</b></div>` : '<div style="margin:8px 0"><b>Taxi Fare</b></div>'}
+  <div style="margin:8px 0"><b>From:</b> <span style="min-width:220px;display:inline-block;text-decoration:none">${t.pickup_locations||''}</span></div>
+  <div style="margin:8px 0"><b>&nbsp;&nbsp;&nbsp;&nbsp;to</b> <span style="min-width:220px;display:inline-block;text-decoration:none">${t.dropoff_locations||''}</span></div>
+  ${showDriver ? `<div style="margin:8px 0"><b>Issued by:</b> <span style="min-width:110px;display:inline-block;text-decoration:none">${userProfile?.name||''}</span> &nbsp; <b>Taxi Fare</b></div>` : '<div style="margin:8px 0"><b>Taxi Fare</b></div>'}
   <table style="width:100%;border-collapse:collapse;margin-top:8px">
     <tr><td style="border:2px solid #000;padding:7px 10px;width:55%;font-family:Arial,sans-serif;letter-spacing:0.02em"><b>BOOKING:</b></td><td style="border:2px solid #000;padding:7px 10px;text-align:right;font-weight:bold;font-family:Arial,sans-serif">${t.trip_type==='hourly'&&t.estimated_hours?t.estimated_hours+' HOURS':''}</td></tr>
     ${t.trip_type==='hourly'&&t.hourly_rate?`<tr><td colspan="2" style="border:2px solid #000;padding:6px 10px;font-size:12px;font-family:Arial,sans-serif">RM ${t.hourly_rate}/h x ${t.estimated_hours||'?'}h</td></tr>`:''}
