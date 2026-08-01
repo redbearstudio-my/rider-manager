@@ -1268,7 +1268,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <p style="color:var(--muted);font-size:.9rem" id="receipt-prompt-body">Share a receipt now?</p>
     </div>
     <div class="modal-footer">
-      <button class="btn-cancel" onclick="closeModal('receipt-prompt-modal')">No need</button>
+      <button class="btn-cancel" onclick="document.getElementById('receipt-prompt-modal').classList.remove('open')">No need</button>
       <button class="btn-save" id="receipt-prompt-ok">Ok</button>
     </div>
   </div>
@@ -3754,12 +3754,11 @@ function promptReceipt(tripId, message) {
   document.getElementById('receipt-prompt-body').textContent = message;
   const okBtn = document.getElementById('receipt-prompt-ok');
   okBtn.onclick = () => {
-    // Close without history.back to avoid closing the receipt modal that opens next
     document.getElementById('receipt-prompt-modal').classList.remove('open');
-    if (history.state?.modal === 'receipt-prompt-modal') history.back();
-    setTimeout(() => openReceiptModal(tripId), 50);
+    openReceiptModal(tripId);
   };
-  openModal('receipt-prompt-modal');
+  // Open without pushing history so closing it doesn't trigger popstate chain
+  document.getElementById('receipt-prompt-modal').classList.add('open');
 }
 
 async function markComplete(id) {
