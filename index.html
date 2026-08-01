@@ -3754,8 +3754,10 @@ function promptReceipt(tripId, message) {
   document.getElementById('receipt-prompt-body').textContent = message;
   const okBtn = document.getElementById('receipt-prompt-ok');
   okBtn.onclick = () => {
-    closeModal('receipt-prompt-modal');
-    openReceiptModal(tripId);
+    // Close without history.back to avoid closing the receipt modal that opens next
+    document.getElementById('receipt-prompt-modal').classList.remove('open');
+    if (history.state?.modal === 'receipt-prompt-modal') history.back();
+    setTimeout(() => openReceiptModal(tripId), 50);
   };
   openModal('receipt-prompt-modal');
 }
