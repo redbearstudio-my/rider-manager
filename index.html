@@ -3405,12 +3405,26 @@ function setTripType(type) {
   document.getElementById('t-return-section').style.display = type === 'two_way' ? '' : 'none';
   document.getElementById('t-hourly-section').style.display = type === 'hourly' ? '' : 'none';
   if (type === 'two_way') {
-    const date = document.getElementById('t-date').value || getMYTDate();
-    const time = document.getElementById('t-time').value || getMYTTime();
-    const returnDate = new Date(`${date}T${time || '00:00'}`);
-    returnDate.setHours(returnDate.getHours() + 2);
-    document.getElementById('t-return-date').value = returnDate.toISOString().split('T')[0];
-    document.getElementById('t-return-time').value = returnDate.toTimeString().slice(0, 5);
+    const isEditMode = !!document.getElementById('trip-id-edit').value;
+    if (isEditMode) {
+      // Hide return section when editing — the return trip is a separate record
+      document.getElementById('t-return-section').style.display = 'none';
+    } else {
+      // New trip — set default return date/time (+2 hours, pure UTC+8 math)
+      const date = document.getElementById('t-date').value || getMYTDate();
+      const time = document.getElementById('t-time').value || getMYTTime();
+      const [h, m] = time.split(':').map(Number);
+      const [y, mo, d] = date.split('-').map(Number);
+      const baseMins = h * 60 + m + 120; // +2 hours
+      const retH = Math.floor(baseMins / 60) % 24;
+      const retM = baseMins % 60;
+      const daysOver = Math.floor((h * 60 + m + 120) / 1440);
+      const retDate = new Date(Date.UTC(y, mo - 1, d + daysOver));
+      document.getElementById('t-return-date').value =
+        `${retDate.getUTCFullYear()}-${String(retDate.getUTCMonth()+1).padStart(2,'0')}-${String(retDate.getUTCDate()).padStart(2,'0')}`;
+      document.getElementById('t-return-time').value =
+        `${String(retH).padStart(2,'0')}:${String(retM).padStart(2,'0')}`;
+    }
   }
   // Clear any existing poll
   if (window._hourlyPollInterval) { clearInterval(window._hourlyPollInterval); window._hourlyPollInterval = null; }
