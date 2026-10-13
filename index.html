@@ -4422,7 +4422,7 @@ function exportExpensesPDF(rows, userName, rangeLabel, groupByCat, fileLabel) {
   w.document.close();
 }
 
-function doExportTrips() {
+async function doExportTrips() {
   const exportAll = document.getElementById('trip-export-all').checked;
   let filtered, fileLabel, rangeLabel;
 
@@ -4445,37 +4445,167 @@ function doExportTrips() {
 
   const userName = document.getElementById('settings-name').value.trim() || 'Unknown';
 
-  const rows = filtered.map(t => ({
-    'Trip ID': t.trip_id||t.id,
-    'Date': t.date,
-    'Time': t.time,
-    'Guest Name': t.guest_name||'',
-    'Guest Contact': t.guest_contact||'',
-    'Pickup Locations': t.pickup_locations||'',
-    'Dropoff Locations': t.dropoff_locations||'',
-    'Adults': t.adults||0,
-    'Kids': t.kids||0,
-    'Small Luggage': t.small_luggage||0,
-    'Medium Luggage': t.medium_luggage||0,
-    'Big Luggage': t.big_luggage||0,
-    'Charge (RM)': parseFloat(t.charge||0),
-    'Status': t.status||'',
-    'Completed': t.completed?'Yes':'No',
-    'Cancelled': t.cancelled?'Yes':'No',
-    'Cancellation Reason': t.cancellation_reason||'',
-    'Paid': t.paid?'Yes':'No',
-    'Notes': t.notes||'',
-    'Created At': t.created_at||''
-  }));
+  // Sort by date ascending
+  const sorted = [...filtered].sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
 
-  const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = [15,12,8,20,16,25,25,7,6,8,10,8,12,12,10,10,20,6,25,20].map(w => ({ wch: w }));
+  // Group by month (YYYY-MM)
+  const monthGroups = {};
+  for (const t of sorted) {
+    const key = t.date ? t.date.slice(0,7) : 'unknown';
+    if (!monthGroups[key]) monthGroups[key] = [];
+    monthGroups[key].push(t);
+  }
+
+  const COLS = ['Trip ID','Date','Time','Guest Name','Guest Contact','Pickup','Dropoff','Adults','Kids','Charge (RM)','Status','Paid','Notes'];
+  const COL_WIDTHS = [15,12,8,20,16,28,28,7,6,12,12,6,25];
+
+  const aoa = [];
+  const boldRows = new Set();   // row indices that should be fully bold
+  const mergeRows = [];         // rows to merge across all columns
+
+  // Title row (row 0)
+  aoa.push([`Trip Export — ${userName}   |   ${rangeLabel}`]);
+  boldRows.add(0); mergeRows.push(0);
+  aoa.push([]); // blank (row 1)
+
+  let grandTotal = 0, grandCount = 0;
+
+  const monthKeys = Object.keys(monthGroups).sort();
+  for (const key of monthKeys) {
+    const group = monthGroups[key];
+    // Month header
+    const [y, m] = key.split('-');
+    const monthLabel = new Date(Number(y), Number(m)-1, 1).toLocaleString('en-MY', {month:'long', year:'numeric'});
+    const monthHeaderRow = aoa.length;
+    aoa.push([monthLabel.toUpperCase()]);
+    boldRows.add(monthHeaderRow); mergeRows.push(monthHeaderRow);
+    // Column headers
+    const colHeaderRow = aoa.length;
+    aoa.push([...COLS]);
+    boldRows.add(colHeaderRow);
+    // Trip rows
+    for (const t of group) {
+      aoa.push([
+        t.trip_id||t.id||'',
+        t.date||'',
+        t.time||'',
+        t.guest_name||'',
+        t.guest_contact||'',
+        t.pickup_locations||'',
+        t.dropoff_locations||'',
+        t.adults||0,
+        t.kids||0,
+        parseFloat(t.charge||0),
+        t.status||'',
+        t.paid?'Yes':'No',
+        t.notes||''
+      ]);
+    }
+    // Month subtotal
+    const monthTotal = group.reduce((s,t) => s + parseFloat(t.charge||0), 0);
+    const monthCount = group.length;
+    const subtotalRow = aoa.length;
+    aoa.push(['', '', '', '', '', '', '', '', `${monthCount} trip${monthCount!==1?'s':''}`, monthTotal, 'SUBTOTAL', '', '']);
+    boldRows.add(subtotalRow);
+    grandTotal += monthTotal;
+    grandCount += monthCount;
+    aoa.push([]); // blank between months
+  }
+
+  // Grand total
+  const grandRow = aoa.length;
+  aoa.push(['', '', '', '', '', '', '', '', `${grandCount} trip${grandCount!==1?'s':''}`, grandTotal, 'GRAND TOTAL', '', '']);
+  boldRows.add(grandRow);
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = COL_WIDTHS.map(w => ({ wch: w }));
+  ws['!merges'] = mergeRows.map(r => ({ s:{r,c:0}, e:{r,c:COLS.length-1} }));
+
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Trips');
-  XLSX.writeFile(wb, `${userName}_trips_${fileLabel}.xlsx`);
+
+  // SheetJS CE doesn't support cell styles via the API.
+  // We write to an ArrayBuffer, unzip, inject a styles.xml with bold fonts,
+  // patch the sheet XML to reference bold style (xf index 1), then re-zip and download.
+  const u8 = XLSX.write(wb, { bookType:'xlsx', type:'array' });
+
+  // Minimal styles.xml: xf index 0 = normal, xf index 1 = bold
+  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="2">
+    <font><sz val="11"/><name val="Calibri"/></font>
+    <font><b/><sz val="11"/><name val="Calibri"/></font>
+  </fonts>
+  <fills count="2">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+  </fills>
+  <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="2">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+    <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+  </cellXfs>
+</styleSheet>`;
+
+  // Patch sheet XML: for every cell in a bold row, add s="1"
+  // We use JSZip if available, else fall back to a regex patch on the raw zip bytes isn't feasible —
+  // so we do a text-level patch on the sheet XML extracted via XLSX.write with type:'string' trick.
+  // Better: re-generate sheet XML string from the wb, patch it, re-zip with a simple approach.
+  // Simplest reliable method: use XLSX to write as 'binary' string, get the zip object from wb,
+  // then manipulate it directly since XLSX uses its own zip internally.
+
+  // Get zip from workbook internals
+  const wbout = XLSX.write(wb, { bookType:'xlsx', type:'binary' });
+  // Convert binary string to Uint8Array
+  const buf = new Uint8Array(wbout.length);
+  for (let i = 0; i < wbout.length; i++) buf[i] = wbout.charCodeAt(i) & 0xFF;
+
+  // Use JSZip to repack with styles
+  async function injectBoldAndDownload() {
+    // Dynamically load JSZip if not present
+    if (!window.JSZip) {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://unpkg.com/jszip@3.10.1/dist/jszip.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
+    const zip = await JSZip.loadAsync(buf);
+
+    // Replace styles.xml
+    zip.file('xl/styles.xml', stylesXml);
+
+    // Patch sheet1.xml: add s="1" to <c> elements in bold rows (1-based row numbers)
+    const sheetXml = await zip.file('xl/worksheets/sheet1.xml').async('string');
+    // For each bold row (0-based → xlsx row attr is 1-based)
+    const boldRowNums = new Set([...boldRows].map(r => r + 1));
+    // Match <row r="N" ...>...</row> and add s="1" to each <c> inside if N is bold
+    const patched = sheetXml.replace(/<row r="(\d+)"([^>]*)>([\s\S]*?)<\/row>/g, (match, rNum, attrs, inner) => {
+      if (!boldRowNums.has(Number(rNum))) return match;
+      // Add s="1" to each <c tag that doesn't already have s=
+      const boldInner = inner.replace(/<c ([^>]*?)(?:\s*\/>|>([\s\S]*?)<\/c>)/g, (cm, cattrs, cinner) => {
+        if (/\bs=/.test(cattrs)) return cm; // already has style
+        const newAttrs = cattrs + ' s="1"';
+        return cinner !== undefined ? `<c ${newAttrs}>${cinner}</c>` : `<c ${newAttrs}/>`;
+      });
+      return `<row r="${rNum}"${attrs}>${boldInner}</row>`;
+    });
+    zip.file('xl/worksheets/sheet1.xml', patched);
+
+    const outBlob = await zip.generateAsync({ type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(outBlob);
+    a.download = `${userName}_trips_${fileLabel}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  await injectBoldAndDownload();
 
   closeModal('export-trips-modal');
-  toast(`Exported ${filtered.length} trips to Excel`, 'success');
+  toast(`Exported ${grandCount} trips (${monthKeys.length} month${monthKeys.length!==1?'s':''}) to Excel`, 'success');
 }
 
 function exportCSV() {
