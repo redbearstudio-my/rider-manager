@@ -1441,9 +1441,24 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         </div>
       </div>
     </div>
+        <!-- Format selector -->
+        <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+          <span style="font-size:.8rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:.5rem">Format</span>
+          <div style="display:flex;gap:.5rem">
+            <label id="fmt-excel-lbl" style="flex:1;display:flex;align-items:center;justify-content:center;gap:.4rem;padding:.55rem;border:1.5px solid var(--teal);border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:600;color:var(--teal);background:var(--teal-light,#e6faf8)">
+              <input type="radio" name="trip-export-fmt" value="excel" checked onchange="onTripFmtChange()" style="display:none">
+              📊 Excel
+            </label>
+            <label id="fmt-pdf-lbl" style="flex:1;display:flex;align-items:center;justify-content:center;gap:.4rem;padding:.55rem;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:600;color:var(--muted);background:var(--bg)">
+              <input type="radio" name="trip-export-fmt" value="pdf" onchange="onTripFmtChange()" style="display:none">
+              🖨️ PDF
+            </label>
+          </div>
+        </div>
+    </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal('export-trips-modal')">Cancel</button>
-      <button class="btn-save" onclick="doExportTrips()">Export Excel</button>
+      <button class="btn-save" id="trip-export-btn" onclick="doExportTrips()">Export Excel</button>
     </div>
   </div>
 </div>
@@ -4278,6 +4293,9 @@ function openExportModal(type) {
     document.getElementById('trip-export-filters').style.display = '';
     setExportTab('trip','month');
     initTripColChips();
+    // Reset format to Excel
+    const excelRadio = document.querySelector('input[name="trip-export-fmt"][value="excel"]');
+    if (excelRadio) { excelRadio.checked = true; onTripFmtChange(); }
     openModal('export-trips-modal');
   }
 }
@@ -4703,10 +4721,75 @@ async function doExportTrips() {
     URL.revokeObjectURL(a.href);
   }
 
+  const fmt = document.querySelector('input[name="trip-export-fmt"]:checked')?.value || 'excel';
+
+  if (fmt === 'pdf') {
+    exportTripsPDF({ aoa, boldRows, mergeRows, COLS, userName, rangeLabel, grandCount, monthKeys });
+    closeModal('export-trips-modal');
+    return;
+  }
+
   await injectBoldAndDownload();
 
   closeModal('export-trips-modal');
   toast(`Exported ${grandCount} trips (${monthKeys.length} month${monthKeys.length!==1?'s':''}) to Excel`, 'success');
+}
+
+function onTripFmtChange() {
+  const fmt = document.querySelector('input[name="trip-export-fmt"]:checked')?.value || 'excel';
+  const isExcel = fmt === 'excel';
+  const excelLbl = document.getElementById('fmt-excel-lbl');
+  const pdfLbl = document.getElementById('fmt-pdf-lbl');
+  excelLbl.style.borderColor = isExcel ? 'var(--teal)' : 'var(--border)';
+  excelLbl.style.background  = isExcel ? 'var(--teal-light,#e6faf8)' : 'var(--bg)';
+  excelLbl.style.color       = isExcel ? 'var(--teal)' : 'var(--muted)';
+  pdfLbl.style.borderColor   = !isExcel ? 'var(--teal)' : 'var(--border)';
+  pdfLbl.style.background    = !isExcel ? 'var(--teal-light,#e6faf8)' : 'var(--bg)';
+  pdfLbl.style.color         = !isExcel ? 'var(--teal)' : 'var(--muted)';
+  document.getElementById('trip-export-btn').textContent = isExcel ? 'Export Excel' : 'Export PDF';
+}
+
+function exportTripsPDF({ aoa, boldRows, mergeRows, COLS, userName, rangeLabel, grandCount, monthKeys }) {
+  const mergeSet = new Set(mergeRows);
+
+  const rows = aoa.map((row, ri) => {
+    const isBold = boldRows.has(ri);
+    const isMerge = mergeSet.has(ri);
+    const isEmpty = !row || row.every(c => c === '' || c == null);
+    if (isEmpty) return `<tr><td colspan="${COLS.length || 1}" style="height:8px;border:none"></td></tr>`;
+    if (isMerge) {
+      const val = row[0] ?? '';
+      return `<tr><td colspan="${COLS.length || 1}" style="font-weight:700;font-size:${ri===0?'13px':'11px'};padding:6px 8px;background:${ri===0?'#0d9488':'#f0fdfa'};color:${ri===0?'#fff':'#0d9488'};border-bottom:2px solid #0d9488">${val}</td></tr>`;
+    }
+    const cells = row.map((c, ci) => {
+      const val = c == null ? '' : (typeof c === 'number' ? (Number.isInteger(c) ? c : c.toFixed(2)) : c);
+      return `<td style="padding:5px 8px;border:1px solid #e2e8f0;font-weight:${isBold?'700':'400'};white-space:nowrap;font-size:10px">${val}</td>`;
+    });
+    return `<tr>${cells.join('')}</tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Trip Export — ${userName}</title>
+<style>
+  body{font-family:Arial,sans-serif;font-size:10px;margin:12px;color:#1e293b}
+  h2{font-size:14px;margin:0 0 2px}
+  p{margin:0 0 10px;color:#64748b;font-size:10px}
+  table{border-collapse:collapse;width:100%;table-layout:auto}
+  @media print{@page{size:landscape;margin:12mm} button{display:none}}
+</style>
+</head><body>
+<h2>Trip Export — ${userName}</h2>
+<p>${rangeLabel} · ${grandCount} trip${grandCount!==1?'s':''}</p>
+<table>${rows}</table>
+<br>
+<button onclick="window.print()" style="padding:8px 16px;background:#0d9488;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px">🖨️ Print / Save as PDF</button>
+</body></html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) { toast('Pop-up blocked — allow pop-ups and try again', 'error'); return; }
+  win.document.write(html);
+  win.document.close();
+  toast(`PDF preview opened — use Print to save as PDF`, 'success');
 }
 
 function exportCSV() {
