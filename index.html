@@ -4379,37 +4379,80 @@ function doExportTrips() {
 
   const userName = document.getElementById('settings-name').value.trim() || 'Unknown';
 
-  const rows = filtered.map(t => ({
-    'Trip ID': t.trip_id||t.id,
-    'Date': t.date,
-    'Time': t.time,
-    'Guest Name': t.guest_name||'',
-    'Guest Contact': t.guest_contact||'',
-    'Pickup Locations': t.pickup_locations||'',
-    'Dropoff Locations': t.dropoff_locations||'',
-    'Adults': t.adults||0,
-    'Kids': t.kids||0,
-    'Small Luggage': t.small_luggage||0,
-    'Medium Luggage': t.medium_luggage||0,
-    'Big Luggage': t.big_luggage||0,
-    'Charge (RM)': parseFloat(t.charge||0),
-    'Status': t.status||'',
-    'Completed': t.completed?'Yes':'No',
-    'Cancelled': t.cancelled?'Yes':'No',
-    'Cancellation Reason': t.cancellation_reason||'',
-    'Paid': t.paid?'Yes':'No',
-    'Notes': t.notes||'',
-    'Created At': t.created_at||''
-  }));
+  // Sort by date ascending
+  const sorted = [...filtered].sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
 
-  const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = [15,12,8,20,16,25,25,7,6,8,10,8,12,12,10,10,20,6,25,20].map(w => ({ wch: w }));
+  // Group by month (YYYY-MM)
+  const monthGroups = {};
+  for (const t of sorted) {
+    const key = t.date ? t.date.slice(0,7) : 'unknown';
+    if (!monthGroups[key]) monthGroups[key] = [];
+    monthGroups[key].push(t);
+  }
+
+  const COLS = ['Trip ID','Date','Time','Guest Name','Guest Contact','Pickup','Dropoff','Adults','Kids','Charge (RM)','Status','Paid','Notes'];
+  const COL_WIDTHS = [15,12,8,20,16,28,28,7,6,12,12,6,25];
+
+  const aoa = [];
+  // Title row
+  aoa.push([`Trip Export — ${userName}   |   ${rangeLabel}`]);
+  aoa.push([]); // blank
+
+  let grandTotal = 0, grandCount = 0;
+
+  const monthKeys = Object.keys(monthGroups).sort();
+  for (const key of monthKeys) {
+    const group = monthGroups[key];
+    // Month header
+    const [y, m] = key.split('-');
+    const monthLabel = new Date(Number(y), Number(m)-1, 1).toLocaleString('en-MY', {month:'long', year:'numeric'});
+    aoa.push([`── ${monthLabel} ──`]);
+    // Column headers
+    aoa.push([...COLS]);
+    // Trip rows
+    for (const t of group) {
+      aoa.push([
+        t.trip_id||t.id||'',
+        t.date||'',
+        t.time||'',
+        t.guest_name||'',
+        t.guest_contact||'',
+        t.pickup_locations||'',
+        t.dropoff_locations||'',
+        t.adults||0,
+        t.kids||0,
+        parseFloat(t.charge||0),
+        t.status||'',
+        t.paid?'Yes':'No',
+        t.notes||''
+      ]);
+    }
+    // Month subtotal
+    const monthTotal = group.reduce((s,t) => s + parseFloat(t.charge||0), 0);
+    const monthCount = group.length;
+    aoa.push(['', '', '', '', '', '', '', '', `${monthCount} trip${monthCount!==1?'s':''}`, monthTotal, 'SUBTOTAL', '', '']);
+    grandTotal += monthTotal;
+    grandCount += monthCount;
+    aoa.push([]); // blank between months
+  }
+
+  // Grand total
+  aoa.push(['', '', '', '', '', '', '', '', `${grandCount} trip${grandCount!==1?'s':''}`, grandTotal, 'GRAND TOTAL', '', '']);
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = COL_WIDTHS.map(w => ({ wch: w }));
+
+  // Style: bold the title, month headers, column headers, subtotals, grand total
+  // SheetJS CE doesn't support full cell styles, but we can set row heights for clarity
+  // and use cell merges for title
+  ws['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:COLS.length-1} }]; // merge title row
+
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Trips');
   XLSX.writeFile(wb, `${userName}_trips_${fileLabel}.xlsx`);
 
   closeModal('export-trips-modal');
-  toast(`Exported ${filtered.length} trips to Excel`, 'success');
+  toast(`Exported ${grandCount} trips (${monthKeys.length} month${monthKeys.length!==1?'s':''}) to Excel`, 'success');
 }
 
 function exportCSV() {
