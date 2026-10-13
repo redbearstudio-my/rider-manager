@@ -264,12 +264,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* EXPENSE */
 .expense-row{display:flex;align-items:center;justify-content:space-between;padding:.875rem 1rem;background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:.5rem}
 .exp-filter-bar{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:.875rem 1rem;margin-bottom:1rem;display:flex;flex-direction:column;gap:.75rem}
-.exp-filter-dates{display:flex;align-items:flex-end;gap:.5rem}
-.exp-date-field{display:flex;flex-direction:column;gap:.25rem;flex:1}
+.exp-filter-dates{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto;align-items:flex-end;gap:.375rem}
+.exp-date-field{display:flex;flex-direction:column;gap:.25rem;min-width:0}
 .exp-date-field label{font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
-.exp-date-field input{padding:.5rem .625rem;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.8rem;outline:none;width:100%;transition:border-color .2s}
+.exp-date-field input{padding:.5rem .375rem;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.75rem;outline:none;width:100%;transition:border-color .2s;min-width:0}
 .exp-date-field input:focus{border-color:var(--teal)}
-.exp-date-sep{font-size:1rem;color:var(--muted);padding-bottom:.35rem;flex-shrink:0}
+.exp-date-sep{font-size:.9rem;color:var(--muted);padding-bottom:.35rem;flex-shrink:0;text-align:center}
 .exp-clear-btn{background:none;border:1.5px solid var(--border);border-radius:8px;width:34px;height:34px;cursor:pointer;color:var(--muted);font-size:.85rem;flex-shrink:0;transition:all .15s}
 .exp-clear-btn:hover{border-color:var(--danger);color:var(--danger)}
 .exp-cat-chips{display:flex;flex-wrap:wrap;gap:.375rem}
@@ -595,7 +595,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <!-- FILTERS -->
       <div class="exp-filter-bar">
         <div class="exp-filter-dates">
-          <div class="exp-date-field" style="flex:none">
+          <div class="exp-date-field">
             <label>Month</label>
             <input type="month" id="exp-month-pick" onchange="setExpMonth()">
           </div>
