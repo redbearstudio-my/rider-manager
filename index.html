@@ -4394,9 +4394,13 @@ function doExportTrips() {
   const COL_WIDTHS = [15,12,8,20,16,28,28,7,6,12,12,6,25];
 
   const aoa = [];
-  // Title row
+  const boldRows = new Set();   // row indices that should be fully bold
+  const mergeRows = [];         // rows to merge across all columns
+
+  // Title row (row 0)
   aoa.push([`Trip Export — ${userName}   |   ${rangeLabel}`]);
-  aoa.push([]); // blank
+  boldRows.add(0); mergeRows.push(0);
+  aoa.push([]); // blank (row 1)
 
   let grandTotal = 0, grandCount = 0;
 
@@ -4406,9 +4410,13 @@ function doExportTrips() {
     // Month header
     const [y, m] = key.split('-');
     const monthLabel = new Date(Number(y), Number(m)-1, 1).toLocaleString('en-MY', {month:'long', year:'numeric'});
-    aoa.push([`── ${monthLabel} ──`]);
+    const monthHeaderRow = aoa.length;
+    aoa.push([monthLabel.toUpperCase()]);
+    boldRows.add(monthHeaderRow); mergeRows.push(monthHeaderRow);
     // Column headers
+    const colHeaderRow = aoa.length;
     aoa.push([...COLS]);
+    boldRows.add(colHeaderRow);
     // Trip rows
     for (const t of group) {
       aoa.push([
@@ -4430,26 +4438,37 @@ function doExportTrips() {
     // Month subtotal
     const monthTotal = group.reduce((s,t) => s + parseFloat(t.charge||0), 0);
     const monthCount = group.length;
+    const subtotalRow = aoa.length;
     aoa.push(['', '', '', '', '', '', '', '', `${monthCount} trip${monthCount!==1?'s':''}`, monthTotal, 'SUBTOTAL', '', '']);
+    boldRows.add(subtotalRow);
     grandTotal += monthTotal;
     grandCount += monthCount;
     aoa.push([]); // blank between months
   }
 
   // Grand total
+  const grandRow = aoa.length;
   aoa.push(['', '', '', '', '', '', '', '', `${grandCount} trip${grandCount!==1?'s':''}`, grandTotal, 'GRAND TOTAL', '', '']);
+  boldRows.add(grandRow);
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws['!cols'] = COL_WIDTHS.map(w => ({ wch: w }));
+  ws['!merges'] = mergeRows.map(r => ({ s:{r,c:0}, e:{r,c:COLS.length-1} }));
 
-  // Style: bold the title, month headers, column headers, subtotals, grand total
-  // SheetJS CE doesn't support full cell styles, but we can set row heights for clarity
-  // and use cell merges for title
-  ws['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:COLS.length-1} }]; // merge title row
+  // Apply bold styles to flagged rows
+  const colLetters = COLS.map((_,i) => XLSX.utils.encode_col(i));
+  for (const r of boldRows) {
+    for (const col of colLetters) {
+      const addr = col + (r + 1); // XLSX uses 1-based row in address
+      if (!ws[addr]) ws[addr] = { t:'z', v:'' };
+      ws[addr].s = { font: { bold: true } };
+    }
+  }
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Trips');
-  XLSX.writeFile(wb, `${userName}_trips_${fileLabel}.xlsx`);
+  // cellStyles:true needed for SheetJS CE to write style info
+  XLSX.writeFile(wb, `${userName}_trips_${fileLabel}.xlsx`, { cellStyles: true });
 
   closeModal('export-trips-modal');
   toast(`Exported ${grandCount} trips (${monthKeys.length} month${monthKeys.length!==1?'s':''}) to Excel`, 'success');
