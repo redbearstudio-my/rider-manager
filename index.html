@@ -1425,6 +1425,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
             </div>
           </div>
         </div>
+
+        <!-- Column selector -->
+        <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+            <span style="font-size:.8rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Columns</span>
+            <div style="display:flex;gap:.5rem">
+              <button onclick="setAllTripExportCols(true)" style="font-size:.72rem;color:var(--teal);background:none;border:none;cursor:pointer;padding:0;font-weight:600">All</button>
+              <span style="font-size:.72rem;color:var(--muted)">·</span>
+              <button onclick="setAllTripExportCols(false)" style="font-size:.72rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">None</button>
+            </div>
+          </div>
+          <div id="trip-col-chips" style="display:flex;flex-wrap:wrap;gap:.375rem"></div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -4263,8 +4276,72 @@ function openExportModal(type) {
     document.getElementById('trip-export-all').checked = false;
     document.getElementById('trip-export-filters').style.display = '';
     setExportTab('trip','month');
+    initTripColChips();
     openModal('export-trips-modal');
   }
+}
+
+const TRIP_COL_DEFS = [
+  { label:'Trip ID',       key:'trip_id' },
+  { label:'Date',          key:'date' },
+  { label:'Time',          key:'time' },
+  { label:'Guest Name',    key:'guest_name' },
+  { label:'Guest Contact', key:'guest_contact' },
+  { label:'Pickup',        key:'pickup_locations' },
+  { label:'Dropoff',       key:'dropoff_locations' },
+  { label:'Adults',        key:'adults' },
+  { label:'Kids',          key:'kids' },
+  { label:'Charge (RM)',   key:'charge' },
+  { label:'Status',        key:'status' },
+  { label:'Paid',          key:'paid' },
+  { label:'Notes',         key:'notes' },
+];
+
+function initTripColChips() {
+  const container = document.getElementById('trip-col-chips');
+  if (!container) return;
+  // Restore previous selection from sessionStorage, default all checked
+  const saved = (() => { try { return JSON.parse(sessionStorage.getItem('tripExportCols')); } catch { return null; } })();
+  container.innerHTML = TRIP_COL_DEFS.map(c => {
+    const checked = !saved || saved.includes(c.key) ? 'checked' : '';
+    return `<label style="display:flex;align-items:center;gap:.3rem;padding:.3rem .55rem;border:1.5px solid var(--border);border-radius:20px;font-size:.75rem;cursor:pointer;user-select:none;background:var(--bg);transition:border-color .15s" class="col-chip">
+      <input type="checkbox" value="${c.key}" ${checked} onchange="saveTripColSelection()" style="display:none">
+      <span class="col-chip-label">${c.label}</span>
+    </label>`;
+  }).join('');
+  // Apply checked styling
+  container.querySelectorAll('label.col-chip').forEach(lbl => updateChipStyle(lbl));
+  container.querySelectorAll('input').forEach(cb => {
+    cb.addEventListener('change', () => { updateChipStyle(cb.closest('label')); saveTripColSelection(); });
+  });
+}
+
+function updateChipStyle(lbl) {
+  const cb = lbl.querySelector('input');
+  if (cb.checked) {
+    lbl.style.borderColor = 'var(--teal)';
+    lbl.style.background = 'var(--teal-light, #e6faf8)';
+    lbl.style.color = 'var(--teal)';
+    lbl.style.fontWeight = '600';
+  } else {
+    lbl.style.borderColor = 'var(--border)';
+    lbl.style.background = 'var(--bg)';
+    lbl.style.color = 'var(--muted)';
+    lbl.style.fontWeight = '400';
+  }
+}
+
+function saveTripColSelection() {
+  const keys = [...document.querySelectorAll('#trip-col-chips input:checked')].map(el => el.value);
+  try { sessionStorage.setItem('tripExportCols', JSON.stringify(keys)); } catch {}
+}
+
+function setAllTripExportCols(checked) {
+  document.querySelectorAll('#trip-col-chips input[type=checkbox]').forEach(cb => {
+    cb.checked = checked;
+    updateChipStyle(cb.closest('label'));
+  });
+  saveTripColSelection();
 }
 
 function setExportTab(prefix, mode) {
@@ -4456,8 +4533,34 @@ async function doExportTrips() {
     monthGroups[key].push(t);
   }
 
-  const COLS = ['Trip ID','Date','Time','Guest Name','Guest Contact','Pickup','Dropoff','Adults','Kids','Charge (RM)','Status','Paid','Notes'];
-  const COL_WIDTHS = [15,12,8,20,16,28,28,7,6,12,12,6,25];
+  // All possible columns with their field mappings and widths
+  const ALL_COL_DEFS = [
+    { label:'Trip ID',       key:'trip_id',           width:15, fn: t => t.trip_id||t.id||'' },
+    { label:'Date',          key:'date',              width:12, fn: t => t.date||'' },
+    { label:'Time',          key:'time',              width:8,  fn: t => t.time||'' },
+    { label:'Guest Name',    key:'guest_name',        width:20, fn: t => t.guest_name||'' },
+    { label:'Guest Contact', key:'guest_contact',     width:16, fn: t => t.guest_contact||'' },
+    { label:'Pickup',        key:'pickup_locations',  width:28, fn: t => t.pickup_locations||'' },
+    { label:'Dropoff',       key:'dropoff_locations', width:28, fn: t => t.dropoff_locations||'' },
+    { label:'Adults',        key:'adults',            width:7,  fn: t => t.adults||0 },
+    { label:'Kids',          key:'kids',              width:6,  fn: t => t.kids||0 },
+    { label:'Charge (RM)',   key:'charge',            width:12, fn: t => parseFloat(t.charge||0) },
+    { label:'Status',        key:'status',            width:12, fn: t => t.status||'' },
+    { label:'Paid',          key:'paid',              width:6,  fn: t => t.paid?'Yes':'No' },
+    { label:'Notes',         key:'notes',             width:25, fn: t => t.notes||'' },
+  ];
+
+  // Filter to user-selected columns
+  const selectedKeys = new Set(
+    [...document.querySelectorAll('#trip-col-chips input[type=checkbox]:checked')].map(el => el.value)
+  );
+  const COLS_DEF = selectedKeys.size ? ALL_COL_DEFS.filter(c => selectedKeys.has(c.key)) : ALL_COL_DEFS;
+  if (!COLS_DEF.length) { toast('Select at least one column', 'error'); return; }
+
+  const COLS = COLS_DEF.map(c => c.label);
+  const COL_WIDTHS = COLS_DEF.map(c => c.width);
+  // Index of 'Charge (RM)' in selected columns (for subtotal row placement)
+  const chargeIdx = COLS_DEF.findIndex(c => c.key === 'charge');
 
   const aoa = [];
   const boldRows = new Set();   // row indices that should be fully bold
@@ -4485,27 +4588,19 @@ async function doExportTrips() {
     boldRows.add(colHeaderRow);
     // Trip rows
     for (const t of group) {
-      aoa.push([
-        t.trip_id||t.id||'',
-        t.date||'',
-        t.time||'',
-        t.guest_name||'',
-        t.guest_contact||'',
-        t.pickup_locations||'',
-        t.dropoff_locations||'',
-        t.adults||0,
-        t.kids||0,
-        parseFloat(t.charge||0),
-        t.status||'',
-        t.paid?'Yes':'No',
-        t.notes||''
-      ]);
+      aoa.push(COLS_DEF.map(c => c.fn(t)));
     }
     // Month subtotal
     const monthTotal = group.reduce((s,t) => s + parseFloat(t.charge||0), 0);
     const monthCount = group.length;
     const subtotalRow = aoa.length;
-    aoa.push(['', '', '', '', '', '', '', '', `${monthCount} trip${monthCount!==1?'s':''}`, monthTotal, 'SUBTOTAL', '', '']);
+    const subtotalRowData = new Array(COLS.length).fill('');
+    if (chargeIdx >= 0) subtotalRowData[chargeIdx] = monthTotal;
+    // Put trip count and SUBTOTAL label in last two populated positions
+    const lastCol = COLS.length - 1;
+    subtotalRowData[lastCol] = 'SUBTOTAL';
+    if (lastCol > 0) subtotalRowData[lastCol - 1] = `${monthCount} trip${monthCount!==1?'s':''}`;
+    aoa.push(subtotalRowData);
     boldRows.add(subtotalRow);
     grandTotal += monthTotal;
     grandCount += monthCount;
@@ -4514,7 +4609,12 @@ async function doExportTrips() {
 
   // Grand total
   const grandRow = aoa.length;
-  aoa.push(['', '', '', '', '', '', '', '', `${grandCount} trip${grandCount!==1?'s':''}`, grandTotal, 'GRAND TOTAL', '', '']);
+  const grandRowData = new Array(COLS.length).fill('');
+  if (chargeIdx >= 0) grandRowData[chargeIdx] = grandTotal;
+  const lastCol = COLS.length - 1;
+  grandRowData[lastCol] = 'GRAND TOTAL';
+  if (lastCol > 0) grandRowData[lastCol - 1] = `${grandCount} trip${grandCount!==1?'s':''}`;
+  aoa.push(grandRowData);
   boldRows.add(grandRow);
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
