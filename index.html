@@ -1402,7 +1402,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       </div>
 
       <div style="border-top:1px solid var(--border);padding-top:1rem">
-        <div style="font-weight:700;font-size:.875rem;margin-bottom:.75rem">📊 Export as Excel</div>
         <label class="export-all-row">
           <input type="checkbox" id="trip-export-all" onchange="toggleTripExportAll()">
           <span>Export all trips</span>
@@ -4614,11 +4613,17 @@ async function doExportTrips() {
     const monthCount = group.length;
     const subtotalRow = aoa.length;
     const subtotalRowData = new Array(COLS.length).fill('');
-    if (chargeIdx >= 0) subtotalRowData[chargeIdx] = monthTotal;
-    // Put trip count and SUBTOTAL label in last two populated positions
-    const lastCol = COLS.length - 1;
-    subtotalRowData[lastCol] = 'SUBTOTAL';
-    if (lastCol > 0) subtotalRowData[lastCol - 1] = `${monthCount} trip${monthCount!==1?'s':''}`;
+    if (chargeIdx >= 0) {
+      subtotalRowData[chargeIdx] = monthTotal;
+      // Label immediately after charge col; count immediately before charge col
+      if (chargeIdx + 1 < COLS.length) subtotalRowData[chargeIdx + 1] = 'SUBTOTAL';
+      if (chargeIdx - 1 >= 0) subtotalRowData[chargeIdx - 1] = `${monthCount} trip${monthCount!==1?'s':''}`;
+    } else {
+      // No charge col selected — put count + label at end
+      const last = COLS.length - 1;
+      subtotalRowData[last] = 'SUBTOTAL';
+      if (last > 0) subtotalRowData[last - 1] = `${monthCount} trip${monthCount!==1?'s':''}`;
+    }
     aoa.push(subtotalRowData);
     boldRows.add(subtotalRow);
     grandTotal += monthTotal;
@@ -4629,10 +4634,15 @@ async function doExportTrips() {
   // Grand total
   const grandRow = aoa.length;
   const grandRowData = new Array(COLS.length).fill('');
-  if (chargeIdx >= 0) grandRowData[chargeIdx] = grandTotal;
-  const lastCol = COLS.length - 1;
-  grandRowData[lastCol] = 'GRAND TOTAL';
-  if (lastCol > 0) grandRowData[lastCol - 1] = `${grandCount} trip${grandCount!==1?'s':''}`;
+  if (chargeIdx >= 0) {
+    grandRowData[chargeIdx] = grandTotal;
+    if (chargeIdx + 1 < COLS.length) grandRowData[chargeIdx + 1] = 'GRAND TOTAL';
+    if (chargeIdx - 1 >= 0) grandRowData[chargeIdx - 1] = `${grandCount} trip${grandCount!==1?'s':''}`;
+  } else {
+    const last = COLS.length - 1;
+    grandRowData[last] = 'GRAND TOTAL';
+    if (last > 0) grandRowData[last - 1] = `${grandCount} trip${grandCount!==1?'s':''}`;
+  }
   aoa.push(grandRowData);
   boldRows.add(grandRow);
 
@@ -4724,7 +4734,7 @@ async function doExportTrips() {
   const fmt = document.querySelector('input[name="trip-export-fmt"]:checked')?.value || 'excel';
 
   if (fmt === 'pdf') {
-    exportTripsPDF({ aoa, boldRows, mergeRows, COLS, userName, rangeLabel, grandCount, monthKeys });
+    await exportTripsPDF({ aoa, boldRows, mergeRows, COLS, userName, rangeLabel, grandCount, monthKeys, fileLabel });
     closeModal('export-trips-modal');
     return;
   }
@@ -4749,47 +4759,108 @@ function onTripFmtChange() {
   document.getElementById('trip-export-btn').textContent = isExcel ? 'Export Excel' : 'Export PDF';
 }
 
-function exportTripsPDF({ aoa, boldRows, mergeRows, COLS, userName, rangeLabel, grandCount, monthKeys }) {
+async function exportTripsPDF({ aoa, boldRows, mergeRows, COLS, userName, rangeLabel, grandCount, monthKeys, fileLabel }) {
+  // Load jsPDF + autotable on demand
+  async function loadScript(src) {
+    if (document.querySelector(`script[src="${src}"]`)) return;
+    await new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+  }
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  // Title
+  doc.setFontSize(13); doc.setFont('helvetica','bold');
+  doc.text(`Trip Export — ${userName}`, 14, 14);
+  doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(100);
+  doc.text(`${rangeLabel}  ·  ${grandCount} trip${grandCount!==1?'s':''}`, 14, 20);
+  doc.setTextColor(0);
+
   const mergeSet = new Set(mergeRows);
+  let y = 26;
 
-  const rows = aoa.map((row, ri) => {
-    const isBold = boldRows.has(ri);
-    const isMerge = mergeSet.has(ri);
-    const isEmpty = !row || row.every(c => c === '' || c == null);
-    if (isEmpty) return `<tr><td colspan="${COLS.length || 1}" style="height:8px;border:none"></td></tr>`;
-    if (isMerge) {
-      const val = row[0] ?? '';
-      return `<tr><td colspan="${COLS.length || 1}" style="font-weight:700;font-size:${ri===0?'13px':'11px'};padding:6px 8px;background:${ri===0?'#0d9488':'#f0fdfa'};color:${ri===0?'#fff':'#0d9488'};border-bottom:2px solid #0d9488">${val}</td></tr>`;
-    }
-    const cells = row.map((c, ci) => {
-      const val = c == null ? '' : (typeof c === 'number' ? (Number.isInteger(c) ? c : c.toFixed(2)) : c);
-      return `<td style="padding:5px 8px;border:1px solid #e2e8f0;font-weight:${isBold?'700':'400'};white-space:nowrap;font-size:10px">${val}</td>`;
+  // Group aoa rows into sections separated by month headers
+  // We'll call autoTable once per month section
+  let sectionHeader = null, sectionColHeaders = null, sectionRows = [], sectionBoldRowsLocal = new Set();
+
+  const flush = () => {
+    if (!sectionColHeaders) return;
+    doc.autoTable({
+      head: [sectionColHeaders],
+      body: sectionRows,
+      startY: y,
+      theme: 'grid',
+      styles: { fontSize: 7.5, cellPadding: 1.5, overflow: 'linebreak' },
+      headStyles: { fillColor: [13, 148, 136], textColor: 255, fontStyle: 'bold' },
+      willDrawCell: (data) => {
+        if (data.section === 'body' && sectionBoldRowsLocal.has(data.row.index)) {
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.fillColor = [240, 253, 250];
+        }
+      },
+      didDrawPage: (d) => { y = d.cursor.y + 4; },
+      margin: { left: 14, right: 14 },
     });
-    return `<tr>${cells.join('')}</tr>`;
-  }).join('');
+    y = doc.lastAutoTable.finalY + 6;
+    sectionHeader = null; sectionColHeaders = null; sectionRows = []; sectionBoldRowsLocal = new Set();
+  };
 
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>Trip Export — ${userName}</title>
-<style>
-  body{font-family:Arial,sans-serif;font-size:10px;margin:12px;color:#1e293b}
-  h2{font-size:14px;margin:0 0 2px}
-  p{margin:0 0 10px;color:#64748b;font-size:10px}
-  table{border-collapse:collapse;width:100%;table-layout:auto}
-  @media print{@page{size:landscape;margin:12mm} button{display:none}}
-</style>
-</head><body>
-<h2>Trip Export — ${userName}</h2>
-<p>${rangeLabel} · ${grandCount} trip${grandCount!==1?'s':''}</p>
-<table>${rows}</table>
-<br>
-<button onclick="window.print()" style="padding:8px 16px;background:#0d9488;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px">🖨️ Print / Save as PDF</button>
-</body></html>`;
+  let localRowIdx = 0;
+  for (let ri = 2; ri < aoa.length; ri++) { // skip title + blank
+    const row = aoa[ri];
+    const isEmpty = !row || row.every(c => c === '' || c == null);
+    const isMerge = mergeSet.has(ri);
+    const isBold = boldRows.has(ri);
 
-  const win = window.open('', '_blank');
-  if (!win) { toast('Pop-up blocked — allow pop-ups and try again', 'error'); return; }
-  win.document.write(html);
-  win.document.close();
-  toast(`PDF preview opened — use Print to save as PDF`, 'success');
+    if (isEmpty) continue;
+
+    if (isMerge && ri > 2) {
+      // Month header — flush previous section first
+      flush();
+      // Draw section header bar
+      doc.setFillColor(13, 148, 136);
+      doc.setTextColor(255);
+      doc.setFontSize(9); doc.setFont('helvetica','bold');
+      doc.roundedRect(14, y, doc.internal.pageSize.width - 28, 7, 1, 1, 'F');
+      doc.text(String(row[0] ?? ''), 17, y + 5);
+      doc.setTextColor(0); doc.setFont('helvetica','normal');
+      y += 9;
+      localRowIdx = 0;
+      continue;
+    }
+
+    if (isMerge && ri === 2) {
+      // Very first month header
+      doc.setFillColor(13, 148, 136);
+      doc.setTextColor(255);
+      doc.setFontSize(9); doc.setFont('helvetica','bold');
+      doc.roundedRect(14, y, doc.internal.pageSize.width - 28, 7, 1, 1, 'F');
+      doc.text(String(row[0] ?? ''), 17, y + 5);
+      doc.setTextColor(0); doc.setFont('helvetica','normal');
+      y += 9;
+      localRowIdx = 0;
+      continue;
+    }
+
+    // Column header row (immediately after merge row)
+    if (isBold && !sectionColHeaders) {
+      sectionColHeaders = row.map(c => String(c ?? ''));
+      localRowIdx = 0;
+      continue;
+    }
+
+    // Data / subtotal / grand total rows
+    const formatted = row.map(c => c == null ? '' : (typeof c === 'number' ? (Number.isInteger(c) ? String(c) : c.toFixed(2)) : String(c)));
+    sectionRows.push(formatted);
+    if (isBold) sectionBoldRowsLocal.add(localRowIdx);
+    localRowIdx++;
+  }
+  flush(); // flush last section
+
+  doc.save(`${userName}_trips_${fileLabel}.pdf`);
+  toast(`PDF downloaded`, 'success');
 }
 
 function exportCSV() {
