@@ -3895,8 +3895,8 @@ function renderCalendar() {
   document.getElementById('cal-grid').innerHTML = html;
   if (calSelected) showCalDetail(calSelected);
 }
-function calPrev() { calDate.setMonth(calDate.getMonth()-1); renderCalendar(); }
-function calNext() { calDate.setMonth(calDate.getMonth()+1); renderCalendar(); }
+function calPrev() { calDate = new Date(calDate.getFullYear(), calDate.getMonth()-1, 1); renderCalendar(); }
+function calNext() { calDate = new Date(calDate.getFullYear(), calDate.getMonth()+1, 1); renderCalendar(); }
 function selectCalDay(key) {
   calSelected = key;
   renderCalendar();
