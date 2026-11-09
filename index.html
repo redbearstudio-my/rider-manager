@@ -3747,15 +3747,17 @@ function openTripModal(trip = null) {
       if (linked) {
         const ld = new Date(linked.date + 'T00:00:00');
         const ldStr = ld.toLocaleDateString('en-MY', {day:'numeric', month:'short', year:'numeric'});
-        const lPickup = (linked.pickup_locations || '').split('|')[0]?.trim() || '—';
-        const lDropoff = (linked.dropoff_locations || '').split('|')[0]?.trim() || '—';
         const label = isReturnTrip(trip) ? '1st Trip' : 'Return Trip';
         linkedInfoEl.innerHTML = `<div style="background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:8px;padding:.6rem .75rem;font-size:.8rem;margin-bottom:.5rem">
-          <div style="font-weight:700;color:#0369a1;margin-bottom:.25rem">🔗 Linked ${label}</div>
-          <div style="color:var(--text)">${ldStr} ${linked.time?.slice(0,5)||''}</div>
-          <div style="color:var(--muted);margin-top:.15rem">${lPickup} → ${lDropoff}</div>
-          <div style="color:var(--teal);font-weight:600;margin-top:.1rem">RM ${parseFloat(linked.charge||0).toFixed(2)}</div>
+          <div style="font-weight:700;color:#0369a1;margin-bottom:.5rem">🔗 Linked ${label} · ${ldStr} ${linked.time?.slice(0,5)||''} · RM ${parseFloat(linked.charge||0).toFixed(2)}</div>
+          <div style="margin-bottom:.35rem"><label style="font-size:.75rem;font-weight:600;color:#0369a1;text-transform:uppercase;letter-spacing:.04em">Pickup</label>
+            <input id="t-linked-pickup" type="text" value="${(linked.pickup_locations||'').replace(/"/g,'&quot;')}" style="width:100%;padding:.4rem .6rem;border:1px solid #bae6fd;border-radius:6px;font-size:.82rem;font-family:inherit;background:#fff;box-sizing:border-box">
+          </div>
+          <div><label style="font-size:.75rem;font-weight:600;color:#0369a1;text-transform:uppercase;letter-spacing:.04em">Dropoff</label>
+            <input id="t-linked-dropoff" type="text" value="${(linked.dropoff_locations||'').replace(/"/g,'&quot;')}" style="width:100%;padding:.4rem .6rem;border:1px solid #bae6fd;border-radius:6px;font-size:.82rem;font-family:inherit;background:#fff;box-sizing:border-box">
+          </div>
         </div>`;
+        linkedInfoEl.dataset.linkedId = linked.id;
         linkedInfoEl.style.display = '';
       } else {
         linkedInfoEl.style.display = 'none';
@@ -3887,6 +3889,17 @@ async function saveTrip() {
         return;
       }
     }
+  }
+
+  // Save edits to linked trip's pickup/dropoff if changed
+  const linkedInfoEl2 = document.getElementById('t-linked-trip-info');
+  const linkedPickupEl = document.getElementById('t-linked-pickup');
+  const linkedDropoffEl = document.getElementById('t-linked-dropoff');
+  if (id && linkedInfoEl2 && linkedInfoEl2.dataset.linkedId && linkedPickupEl && linkedDropoffEl) {
+    await sb.from('trips').update({
+      pickup_locations: linkedPickupEl.value.trim(),
+      dropoff_locations: linkedDropoffEl.value.trim(),
+    }).eq('id', linkedInfoEl2.dataset.linkedId);
   }
 
   closeModal('trip-modal');
