@@ -3496,8 +3496,8 @@ function setTripType(type) {
       document.getElementById('t-return-time').value =
         `${String(retH).padStart(2,'0')}:${String(retM).padStart(2,'0')}`;
       // Pre-fill reversed pickup/dropoff
-      const pickup = document.getElementById('t-pickup').value.trim();
-      const dropoff = document.getElementById('t-dropoff').value.trim();
+      const pickup = getLocFields('t-pickup-list');
+      const dropoff = getLocFields('t-dropoff-list');
       document.getElementById('t-return-pickup').value = dropoff;
       document.getElementById('t-return-dropoff').value = pickup;
     }
