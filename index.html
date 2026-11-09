@@ -1094,7 +1094,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
           <div class="form-group" style="margin-bottom:0"><label>Return Date *</label><input type="date" id="t-return-date"></div>
           <div class="form-group" style="margin-bottom:0"><label>Return Time *</label><input type="time" id="t-return-time"></div>
         </div>
-        <div style="font-size:.75rem;color:#0369a1;margin-top:.5rem">A return trip will be created automatically with pickup/dropoff reversed.</div>
+        <div class="form-group" style="margin-top:.625rem;margin-bottom:.375rem">
+          <label>Return Pickup (pre-filled, editable)</label>
+          <input type="text" id="t-return-pickup" placeholder="Return pickup location">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Return Dropoff (pre-filled, editable)</label>
+          <input type="text" id="t-return-dropoff" placeholder="Return dropoff location">
+        </div>
+        <div style="font-size:.75rem;color:#0369a1;margin-top:.5rem">Pickup/dropoff pre-filled reversed. Edit if needed.</div>
       </div>
 
       <!-- Hourly: rate and estimated hours -->
@@ -3008,6 +3016,29 @@ function tripCard(t) {
     t.status === 'completed' ? '<span class="badge badge-completed">Completed</span>' :
     '<span class="badge badge-pending">Pending</span>';
   const payBadge = t.paid ? '<span class="badge badge-paid">Paid</span>' : '<span class="badge badge-unpaid">Unpaid</span>';
+
+  // Return trip badge
+  const linkedId = getLinkedTripId(t);
+  const returnBadge = isReturnTrip(t)
+    ? '<span style="font-size:.7rem;background:#fef3c7;color:#92400e;padding:.1rem .45rem;border-radius:10px;font-weight:700;margin-left:.25rem">↩ Return</span>'
+    : (isOutboundTrip(t) ? '<span style="font-size:.7rem;background:#dcfce7;color:#166534;padding:.1rem .45rem;border-radius:10px;font-weight:700;margin-left:.25rem">1st Trip ↗</span>' : '');
+
+  // Linked trip summary (shown on outbound trip card)
+  let linkedSummary = '';
+  if (isOutboundTrip(t) && linkedId) {
+    const linked = trips.find(x => x.id === linkedId);
+    if (linked) {
+      const ld = new Date(linked.date + 'T00:00:00');
+      const ldStr = ld.toLocaleDateString('en-MY', {day:'numeric', month:'short'});
+      const lPickup = (linked.pickup_locations || '').split('|')[0]?.trim() || '—';
+      const lDropoff = (linked.dropoff_locations || '').split('|')[0]?.trim() || '—';
+      linkedSummary = `<div style="margin:.5rem 0 0;padding:.45rem .6rem;background:var(--bg);border:1px dashed var(--border);border-radius:8px;font-size:.78rem;color:var(--muted)">
+        <div style="font-weight:600;color:var(--text);margin-bottom:.2rem">↩ Return: ${ldStr} ${linked.time?.slice(0,5)||''}</div>
+        <div>${lPickup} → ${lDropoff}</div>
+        <div style="color:var(--teal);font-weight:600;margin-top:.15rem">RM ${parseFloat(linked.charge||0).toFixed(2)}</div>
+      </div>`;
+    }
+  }
   const actions = isReadOnly ? '' : `
     <div style="display:flex;gap:.375rem;margin-bottom:.375rem;flex-wrap:wrap">
       <button class="btn-sm" onclick="editTrip('${t.id}')">Edit</button>
@@ -3027,6 +3058,7 @@ function tripCard(t) {
         <div class="trip-date">${dateStr} • ${t.time}</div>
         <div class="trip-name">${t.guest_name || 'Guest'}</div>
         ${t.trip_type === 'two_way' ? '<span style="font-size:.7rem;background:#dbeafe;color:#1d4ed8;padding:.1rem .4rem;border-radius:10px;font-weight:600;margin-left:.25rem">↩ Two Way</span>' : ''}
+        ${returnBadge}
         ${t.trip_type === 'hourly' ? `<span style="font-size:.7rem;background:#f3e8ff;color:#7c3aed;padding:.1rem .4rem;border-radius:10px;font-weight:600;margin-left:.25rem">⏱ Hourly${t.hourly_rate ? ' RM'+t.hourly_rate+'/h' : ''}</span>` : ''}
         <div style="display:flex;flex-direction:column;gap:.3rem;margin-top:.2rem">
           ${(t.guest_contact||'').split(' | ').filter(Boolean).map(contact => {
@@ -3062,7 +3094,8 @@ function tripCard(t) {
       ${lug ? `<span>🧳 ${lug}</span>` : ''}
     </div>
     <div class="trip-charge">RM ${parseFloat(t.charge || 0).toFixed(2)}</div>
-    ${t.notes ? `<div style="font-size:.85rem;color:var(--muted);margin-top:.375rem">📝 ${t.notes}</div>` : ''}
+    ${linkedSummary}
+    ${t.notes ? `<div style="font-size:.85rem;color:var(--muted);margin-top:.375rem">📝 ${(t.notes).replace(/\[linked:[^\]]+\]\s*·?\s*/g,'').replace(/Return trip\s*·?\s*/g,'').trim()}</div>` : ''}
     ${t.cancellation_reason ? `<div style="font-size:.8rem;color:var(--danger);margin-top:.375rem">Reason: ${t.cancellation_reason}</div>` : ''}
     <div class="trip-actions">${actions}</div>
     <div style="display:flex;gap:.4rem;margin-top:.5rem">${payBadge}${statusBadge}</div>
@@ -3462,6 +3495,11 @@ function setTripType(type) {
         `${retDate.getUTCFullYear()}-${String(retDate.getUTCMonth()+1).padStart(2,'0')}-${String(retDate.getUTCDate()).padStart(2,'0')}`;
       document.getElementById('t-return-time').value =
         `${String(retH).padStart(2,'0')}:${String(retM).padStart(2,'0')}`;
+      // Pre-fill reversed pickup/dropoff
+      const pickup = document.getElementById('t-pickup').value.trim();
+      const dropoff = document.getElementById('t-dropoff').value.trim();
+      document.getElementById('t-return-pickup').value = dropoff;
+      document.getElementById('t-return-dropoff').value = pickup;
     }
   }
   // Clear any existing poll
@@ -3767,25 +3805,38 @@ async function saveTrip() {
   }
   if (err) return toast(err.message, 'error');
 
-  // Two way: create return trip with reversed pickup/dropoff
+  // Two way: create return trip with reversed pickup/dropoff, then link both
   if (!id && data.trip_type === 'two_way') {
     const returnDate = document.getElementById('t-return-date').value;
     const returnTime = document.getElementById('t-return-time').value;
     if (!returnDate || !returnTime) {
       toast('Return date/time missing — only outbound trip created', 'error');
     } else {
+      // Fetch the outbound trip we just inserted to get its ID
+      const { data: outRows } = await sb.from('trips')
+        .select('id').eq('user_id', data.user_id).eq('date', data.date).eq('time', data.time)
+        .order('created_at', {ascending: false}).limit(1);
+      const outId = outRows?.[0]?.id;
+      const retPickup = document.getElementById('t-return-pickup').value.trim() || data.dropoff_locations;
+      const retDropoff = document.getElementById('t-return-dropoff').value.trim() || data.pickup_locations;
       const returnData = {
         ...data,
         date: returnDate,
         time: returnTime,
-        pickup_locations: data.dropoff_locations,
-        dropoff_locations: data.pickup_locations,
-        notes: (data.notes ? data.notes + ' · ' : '') + 'Return trip',
+        pickup_locations: retPickup,
+        dropoff_locations: retDropoff,
+        notes: (data.notes ? data.notes + ' · ' : '') + 'Return trip' + (outId ? ` · [linked:${outId}]` : ''),
       };
-      const { error: retErr } = await sb.from('trips').insert(returnData);
+      const { data: retRows, error: retErr } = await sb.from('trips').insert(returnData).select('id');
       if (retErr) {
         toast('Outbound saved. Return trip failed: ' + retErr.message, 'error');
       } else {
+        // Link outbound → return
+        if (outId && retRows?.[0]?.id) {
+          const retId = retRows[0].id;
+          const outNotes = (data.notes ? data.notes + ' · ' : '') + `[linked:${retId}]`;
+          await sb.from('trips').update({ notes: outNotes }).eq('id', outId);
+        }
         closeModal('trip-modal');
         toast('Two-way trip created! (outbound + return)', 'success');
         await loadAll();
@@ -3800,6 +3851,20 @@ async function saveTrip() {
 }
 
 function editTrip(id) { openTripModal(trips.find(t => t.id === id)); }
+
+// ── RETURN TRIP HELPERS ───────────────────────────────────────────────────
+function getLinkedTripId(trip) {
+  const m = (trip.notes || '').match(/\[linked:([^\]]+)\]/);
+  return m ? m[1] : null;
+}
+function isReturnTrip(trip) {
+  // A return trip has 'Return trip' marker in notes
+  return (trip.notes || '').includes('Return trip');
+}
+// A trip is "outbound" if it has a linked id and is NOT a return trip
+function isOutboundTrip(trip) {
+  return getLinkedTripId(trip) !== null && !isReturnTrip(trip);
+}
 
 // Custom receipt prompt modal (replaces native confirm with styled buttons)
 function promptReceipt(tripId, message) {
