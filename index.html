@@ -3750,15 +3750,22 @@ function openTripModal(trip = null) {
         const label = isReturnTrip(trip) ? '1st Trip' : 'Return Trip';
         linkedInfoEl.innerHTML = `<div style="background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:8px;padding:.6rem .75rem;font-size:.8rem;margin-bottom:.5rem">
           <div style="font-weight:700;color:#0369a1;margin-bottom:.5rem">🔗 Linked ${label} · ${ldStr} ${linked.time?.slice(0,5)||''} · RM ${parseFloat(linked.charge||0).toFixed(2)}</div>
-          <div style="margin-bottom:.35rem"><label style="font-size:.75rem;font-weight:600;color:#0369a1;text-transform:uppercase;letter-spacing:.04em">Pickup</label>
-            <input id="t-linked-pickup" type="text" value="${(linked.pickup_locations||'').replace(/"/g,'&quot;')}" style="width:100%;padding:.4rem .6rem;border:1px solid #bae6fd;border-radius:6px;font-size:.82rem;font-family:inherit;background:#fff;box-sizing:border-box">
+          <div style="margin-bottom:.35rem">
+            <label style="font-size:.75rem;font-weight:600;color:#0369a1;text-transform:uppercase;letter-spacing:.04em">Pickup</label>
+            <div id="t-linked-pickup-list"></div>
+            <button type="button" class="loc-add-btn" onclick="addLocField('t-linked-pickup-list')">+ Add Pickup Location</button>
           </div>
-          <div><label style="font-size:.75rem;font-weight:600;color:#0369a1;text-transform:uppercase;letter-spacing:.04em">Dropoff</label>
-            <input id="t-linked-dropoff" type="text" value="${(linked.dropoff_locations||'').replace(/"/g,'&quot;')}" style="width:100%;padding:.4rem .6rem;border:1px solid #bae6fd;border-radius:6px;font-size:.82rem;font-family:inherit;background:#fff;box-sizing:border-box">
+          <div>
+            <label style="font-size:.75rem;font-weight:600;color:#0369a1;text-transform:uppercase;letter-spacing:.04em">Dropoff</label>
+            <div id="t-linked-dropoff-list"></div>
+            <button type="button" class="loc-add-btn" onclick="addLocField('t-linked-dropoff-list')">+ Add Dropoff Location</button>
           </div>
         </div>`;
         linkedInfoEl.dataset.linkedId = linked.id;
         linkedInfoEl.style.display = '';
+        // Populate dynamic loc fields after innerHTML is set
+        setLocFields('t-linked-pickup-list', linked.pickup_locations || '');
+        setLocFields('t-linked-dropoff-list', linked.dropoff_locations || '');
       } else {
         linkedInfoEl.style.display = 'none';
       }
@@ -3893,13 +3900,15 @@ async function saveTrip() {
 
   // Save edits to linked trip's pickup/dropoff if changed
   const linkedInfoEl2 = document.getElementById('t-linked-trip-info');
-  const linkedPickupEl = document.getElementById('t-linked-pickup');
-  const linkedDropoffEl = document.getElementById('t-linked-dropoff');
-  if (id && linkedInfoEl2 && linkedInfoEl2.dataset.linkedId && linkedPickupEl && linkedDropoffEl) {
-    await sb.from('trips').update({
-      pickup_locations: linkedPickupEl.value.trim(),
-      dropoff_locations: linkedDropoffEl.value.trim(),
-    }).eq('id', linkedInfoEl2.dataset.linkedId);
+  if (id && linkedInfoEl2 && linkedInfoEl2.dataset.linkedId) {
+    const lPickupList = document.getElementById('t-linked-pickup-list');
+    const lDropoffList = document.getElementById('t-linked-dropoff-list');
+    if (lPickupList && lDropoffList) {
+      await sb.from('trips').update({
+        pickup_locations: getLocFields('t-linked-pickup-list'),
+        dropoff_locations: getLocFields('t-linked-dropoff-list'),
+      }).eq('id', linkedInfoEl2.dataset.linkedId);
+    }
   }
 
   closeModal('trip-modal');
