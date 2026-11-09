@@ -1672,7 +1672,7 @@ let appSettings = {};
 let isReadOnly = false;
 let currentUser = null, userProfile = null;
 let trips = [], expenses = [], busyTimes = [];
-let calDate = new Date(), calSelected = null;
+let calDate = new Date(), calSelected = new Date().toISOString().slice(0,10);
 let tripTab = 'upcoming', reportPeriod = 'week', historyNewest = true;
 let expActiveCat = 'All';
 let adminFilter = 'all';
@@ -1988,7 +1988,11 @@ function navigate(page) {
   document.querySelectorAll(`[onclick="navigate('${page}')"]`).forEach(n => n.classList.add('active'));
   // Push history so Android back button returns to previous page
   history.pushState({ page }, '');
-  if (page === 'calendar') renderCalendar();
+  if (page === 'calendar') {
+    const t = new Date();
+    if (!calSelected) calSelected = t.toISOString().slice(0,10);
+    renderCalendar();
+  }
   if (page === 'admin') renderAdminPanel();
   if (page === 'settings') { renderSettingsSubscription(); renderSettingsNotifications(); }
   if (page === 'subscription') renderSettingsSubscription();
