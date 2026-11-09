@@ -3741,7 +3741,7 @@ function openTripModal(trip = null) {
   // Show linked trip summary in edit modal for two-way trips
   const linkedInfoEl = document.getElementById('t-linked-trip-info');
   if (linkedInfoEl) {
-    const linkedId = getLinkedTripId(trip);
+    const linkedId = isEdit ? getLinkedTripId(trip) : null;
     if (isEdit && linkedId) {
       const linked = trips.find(x => x.id === linkedId);
       if (linked) {
