@@ -1117,6 +1117,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       </div>
 
       <div class="form-group"><label>Charge (RM) *</label><input type="number" id="t-charge" min="0" step="0.01" placeholder="0.00"></div>
+      <div id="t-linked-trip-info" style="display:none"></div>
       <div class="form-group"><label>Notes (Optional)</label><textarea id="t-notes" placeholder="e.g. This is VIP"></textarea></div>
       <div class="stepper-group">
         <div class="stepper-group-label" onclick="toggleSection('pax-section','pax-chevron')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none">
@@ -3730,10 +3731,40 @@ function openTripModal(trip = null) {
     document.getElementById('t-charge').value = isEdit ? trip.charge : '';
   }
   document.getElementById('t-status').value = isEdit ? trip.status : 'pending';
-  document.getElementById('t-notes').value = isEdit ? (trip.notes || '') : '';
+  // Strip [linked:...] tag from notes display — stored internally, not shown to user
+  const cleanNotes = isEdit ? (trip.notes || '').replace(/\s*·?\s*\[linked:[^\]]+\]/g, '').replace(/^\s*·?\s*/, '').trim() : '';
+  document.getElementById('t-notes').value = cleanNotes;
   document.getElementById('t-paid').checked = isEdit ? trip.paid : false;
   document.getElementById('t-cancel-reason').value = isEdit ? (trip.cancellation_reason || '') : '';
   updateCancelRow();
+
+  // Show linked trip summary in edit modal for two-way trips
+  const linkedInfoEl = document.getElementById('t-linked-trip-info');
+  if (linkedInfoEl) {
+    const linkedId = getLinkedTripId(trip);
+    if (isEdit && linkedId) {
+      const linked = trips.find(x => x.id === linkedId);
+      if (linked) {
+        const ld = new Date(linked.date + 'T00:00:00');
+        const ldStr = ld.toLocaleDateString('en-MY', {day:'numeric', month:'short', year:'numeric'});
+        const lPickup = (linked.pickup_locations || '').split('|')[0]?.trim() || '—';
+        const lDropoff = (linked.dropoff_locations || '').split('|')[0]?.trim() || '—';
+        const label = isReturnTrip(trip) ? '1st Trip' : 'Return Trip';
+        linkedInfoEl.innerHTML = `<div style="background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:8px;padding:.6rem .75rem;font-size:.8rem;margin-bottom:.5rem">
+          <div style="font-weight:700;color:#0369a1;margin-bottom:.25rem">🔗 Linked ${label}</div>
+          <div style="color:var(--text)">${ldStr} ${linked.time?.slice(0,5)||''}</div>
+          <div style="color:var(--muted);margin-top:.15rem">${lPickup} → ${lDropoff}</div>
+          <div style="color:var(--teal);font-weight:600;margin-top:.1rem">RM ${parseFloat(linked.charge||0).toFixed(2)}</div>
+        </div>`;
+        linkedInfoEl.style.display = '';
+      } else {
+        linkedInfoEl.style.display = 'none';
+      }
+    } else {
+      linkedInfoEl.style.display = 'none';
+    }
+  }
+
   openModal('trip-modal');
 }
 document.getElementById('t-status').addEventListener('change', updateCancelRow);
@@ -3764,7 +3795,20 @@ async function saveTrip() {
     cancelled: status === 'cancelled',
     cancellation_reason: status === 'cancelled' ? document.getElementById('t-cancel-reason').value.trim() : '',
     paid: document.getElementById('t-paid').checked,
-    notes: document.getElementById('t-notes').value.trim(),
+    notes: (() => {
+      const userNotes = document.getElementById('t-notes').value.trim();
+      const editId = document.getElementById('trip-id-edit').value;
+      if (editId) {
+        // Preserve [linked:...] tag that was stripped from display
+        const orig = trips.find(x => x.id === editId);
+        const linkedMatch = (orig?.notes || '').match(/\s*·?\s*\[linked:[^\]]+\]/);
+        const linkedTag = linkedMatch ? linkedMatch[0].trim() : '';
+        const returnMarker = (orig?.notes || '').includes('Return trip') ? 'Return trip' : '';
+        const parts = [returnMarker, linkedTag].filter(Boolean).join(' · ');
+        return userNotes ? (parts ? userNotes + ' · ' + parts : userNotes) : parts;
+      }
+      return userNotes;
+    })(),
     trip_type: document.getElementById('t-trip-type').value || 'one_way',
     hourly_rate: document.getElementById('t-trip-type').value === 'hourly' ? (parseFloat(document.getElementById('t-hourly-rate').value) || null) : null,
     estimated_hours: document.getElementById('t-trip-type').value === 'hourly' ? (parseFloat(document.getElementById('t-estimated-hours').value) || 4) : null,
