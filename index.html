@@ -558,7 +558,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="card">
         <div class="cal-month-nav">
           <button class="btn-nav" onclick="calPrev()">&#8249;</button>
-          <h2 id="cal-month-label"></h2>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:.25rem">
+            <h2 id="cal-month-label"></h2>
+            <button onclick="calGoToday()" style="font-size:.7rem;padding:.2rem .6rem;border:1px solid var(--teal);border-radius:12px;background:transparent;color:var(--teal);cursor:pointer;font-weight:600">Today</button>
+          </div>
           <button class="btn-nav" onclick="calNext()">&#8250;</button>
         </div>
         <div class="cal-header-row">
@@ -4071,6 +4074,11 @@ function renderCalendar() {
 }
 function calPrev() { calDate = new Date(calDate.getFullYear(), calDate.getMonth()-1, 1); renderCalendar(); }
 function calNext() { calDate = new Date(calDate.getFullYear(), calDate.getMonth()+1, 1); renderCalendar(); }
+function calGoToday() {
+  const t = new Date(); calDate = new Date(t.getFullYear(), t.getMonth(), 1);
+  const key = t.toISOString().slice(0,10); calSelected = key;
+  renderCalendar(); showCalDetail(key);
+}
 function selectCalDay(key) {
   calSelected = key;
   renderCalendar();
@@ -4096,10 +4104,13 @@ function showCalDetail(key) {
   const tArr = trips.filter(t => t.date === key && !t.cancelled);
   document.getElementById('cal-trips-list').innerHTML = tArr.length
     ? `<div style="font-size:.8rem;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:.05em;margin:${bArr.length ? '.75rem' : '0'} 0 .4rem">Trips</div>`
-      + tArr.map(t => `<div style="background:#f0fdff;border:1px solid #a5f3fc;border-radius:var(--radius-sm);padding:.625rem .875rem;margin-bottom:.375rem">
+      + tArr.map(t => `<div onclick="editTrip('${t.id}')" style="background:#f0fdff;border:1px solid #a5f3fc;border-radius:var(--radius-sm);padding:.625rem .875rem;margin-bottom:.375rem;cursor:pointer;transition:box-shadow .15s" onmouseenter="this.style.boxShadow='0 2px 8px rgba(0,0,0,.1)'" onmouseleave="this.style.boxShadow='none'">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <span style="font-weight:600;font-size:.875rem">${t.time.slice(0,5)} — ${t.guest_name || 'Guest'}</span>
-          <span style="font-weight:700;color:var(--teal)">RM ${parseFloat(t.charge||0).toFixed(2)}</span>
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <span style="font-weight:700;color:var(--teal)">RM ${parseFloat(t.charge||0).toFixed(2)}</span>
+            <span style="font-size:.7rem;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:.1rem .35rem">Edit</span>
+          </div>
         </div>
         <div style="font-size:.8rem;color:var(--muted);margin-top:.2rem">${t.pickup_locations} → ${t.dropoff_locations}</div>
       </div>`).join('')
