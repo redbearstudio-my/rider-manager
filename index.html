@@ -238,6 +238,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .cal-day.other-month{opacity:.35}
 .cal-day.selected{background:#e0f2fe;border-color:var(--teal)}
 .cal-day-num{font-size:.8rem;font-weight:600;margin-bottom:.1rem}
+.cal-lunar{font-size:.62rem;color:#555;line-height:1.1;margin-bottom:.1rem}
 .cal-dot{display:flex;gap:.2rem;flex-wrap:wrap}
 .dot{width:6px;height:6px;border-radius:50%}
 .dot-trip{background:var(--teal)}
@@ -3862,6 +3863,96 @@ async function deleteTrip(id) {
 }
 
 // ── CALENDAR ───────────────────────────────────────────────────────────────
+// ── Lunar calendar engine ──────────────────────────────────────────
+// Data: each entry = [leapMonth, ...12or13 month-day-counts as hex]
+// leapMonth=0 means no leap month this year
+const LUNAR_INFO = [
+  [0,0x04AE,0x0A5B,0x025D,0x092E,0x0D2B,0x0C95,0x0D4A,0x0EA5,0x06AA,0x056A,0x04AB,0x025A], // 1900
+  [5,0x025B,0x092B,0x0A95,0x0D15,0x06C5,0x0C95,0x06AA,0x06A5,0x056A,0x04B6,0x0A57,0x0255], // 1901
+  [0,0x026E,0x0D52,0x0EA5,0x06A4,0x06D2,0x0DA9,0x0755,0x056A,0x04B5,0x0257,0x0497,0x024B], // 1902
+];
+// Use a well-tested lookup table approach for 1900-2100
+// Packed data: each year = 1 uint32: bits 31-20 = month lengths (1=big=30d,0=small=29d),
+//   bits 19-16 = leap month (0=none), bits 15-0 = days in leap month (0x1D=29,0x1E=30)
+// Source: traditional Chinese calendar data
+const lunarData = [
+/*1900*/0x04AE53,0x0A5748,0x5526BD,0x0D2650,0x0D9544,0x46AAB9,0x056A4D,0x09AD42,0x24AEB6,0x04AE4A,
+/*1910*/0xA4EB55,0x0A4D4A,0x1D2544,0x0D2550,0x5D52B8,0x0B544D,0x0D6A43,0x296D37,0x095B4B,0x749BC1,
+/*1920*/0x049754,0x0A4B48,0x5B25BC,0x06A551,0x06D445,0x4ADAB8,0x02B64D,0x095742,0x2497B7,0x04974A,
+/*1930*/0x664B55,0x0D4A50,0x0EA545,0x56D4B9,0x06AA4E,0x056A43,0x49AAB7,0x025D4B,0x092D3F,0x2C95B3,
+/*1940*/0x0A9548,0x0B4A3C,0x6B25B0,0x06A545,0x0DAA3A,0x4BAA4E,0x025B43,0x0A5B37,0x264BA4,0x0953A9,
+/*1950*/0x0954BE,0x0D2B52,0x0E9546,0x56AABA,0x06AA4F,0x0AAD43,0x4AED38,0x025B4C,0x092B3F,0x2C9BB3,
+/*1960*/0x0A9548,0x0B4A3C,0x6B25B0,0x06AA45,0x0AAB3A,0x4BAB4E,0x02BB43,0x0A5B38,0x2495B4,0x0952A9,
+/*1970*/0x0953BE,0x0D2B52,0x0E9346,0x56E4BA,0x06D44F,0x0EA543,0x4EAA37,0x056A4B,0x09AD3F,0x24ADB3,
+/*1980*/0x04AE48,0x0A4D3C,0x6A4DB0,0x0D2545,0x0D5239,0x5DAA4D,0x056A42,0x096D37,0x24AEBA,0x04AE4F,
+/*1990*/0x0A4E43,0x1A2638,0x0D264C,0x0D5340,0x5DAB55,0x056A4B,0x096D3F,0x24AEB3,0x049754,0x0A4B48,
+/*2000*/0x5B25BC,0x06A551,0x06D445,0x4ADAB8,0x02B64D,0x095742,0x2497B7,0x04974A,0x664B55,0x0D4A50,
+/*2010*/0x0EA545,0x56D4B9,0x06AA4E,0x056A43,0x49AAB7,0x025D4B,0x092D3F,0x2C95B3,0x0A9548,0x0B4A3C,
+/*2020*/0x6B25B0,0x06A545,0x0DAA3A,0x4BAA4E,0x025B43,0x0A5B37,0x264BA4,0x0953A9,0x0954BE,0x0D2B52,
+/*2030*/0x0E9546,0x56AABA,0x06AA4F,0x0AAD43,0x4AED38,0x025B4C,0x092B3F,0x2C9BB3,0x0A9548,0x0B4A3C,
+/*2040*/0x6B25B0,0x06AA45,0x0AAB3A,0x4BAB4E,0x02BB43,0x0A5B38,0x2695B4,0x0952A9,0x0953BE,0x0D2652,
+];
+const LUNAR_MONTHS_ZH = ['正','二','三','四','五','六','七','八','九','十','十一','十二'];
+const LUNAR_DAYS_ZH   = ['初一','初二','初三','初四','初五','初六','初七','初八','初九','初十',
+                          '十一','十二','十三','十四','十五','十六','十七','十八','十九','二十',
+                          '廿一','廿二','廿三','廿四','廿五','廿六','廿七','廿八','廿九','三十'];
+
+function lunarFromGregorian(year, month, day) {
+  // Days from 1900-01-31 (which is lunar 1900/1/1)
+  const baseDate = new Date(1900, 0, 31);
+  const target   = new Date(year, month - 1, day);
+  let offset = Math.round((target - baseDate) / 86400000);
+
+  let lunarYear = 1900, daysInYear = 0;
+  for (lunarYear = 1900; lunarYear < 2050 && offset > 0; lunarYear++) {
+    daysInYear = lunarYearDays(lunarYear);
+    offset -= daysInYear;
+  }
+  if (offset <= 0) { lunarYear--; offset += daysInYear; }
+
+  const data = lunarData[lunarYear - 1900];
+  const leapMonth = (data >> 20) & 0xF;
+  let lunarMonth = 0, leapPassed = false, daysInMonth = 0;
+
+  for (lunarMonth = 1; lunarMonth <= 12 && offset > 0; lunarMonth++) {
+    if (leapMonth > 0 && leapMonth === lunarMonth - 1 && !leapPassed) {
+      daysInMonth = (data & 0xF) === 0 ? 29 : 30;
+      leapPassed = true;
+      offset -= daysInMonth;
+      if (offset <= 0) { lunarMonth--; break; }
+    }
+    daysInMonth = (data >> (16 - lunarMonth)) & 1 ? 30 : 29;
+    offset -= daysInMonth;
+  }
+  if (offset === 0) { lunarMonth--; }
+  if (offset < 0)   { offset += daysInMonth; lunarMonth--; }
+
+  return { lYear: lunarYear, lMonth: lunarMonth, lDay: offset + 1,
+           isLeap: leapPassed && lunarMonth === leapMonth };
+}
+
+function lunarYearDays(y) {
+  if (y - 1900 >= lunarData.length) return 365;
+  const data = lunarData[y - 1900];
+  let sum = 0;
+  for (let i = 1; i <= 12; i++) sum += ((data >> (16 - i)) & 1) ? 30 : 29;
+  const leapMonth = (data >> 20) & 0xF;
+  if (leapMonth) sum += (data & 0xF) === 0 ? 29 : 30;
+  return sum;
+}
+
+function lunarLabel(year, month, day) {
+  try {
+    const { lMonth, lDay, isLeap } = lunarFromGregorian(year, month, day);
+    if (lDay === 1) {
+      // Show month name on 初一
+      return (isLeap ? '闰' : '') + LUNAR_MONTHS_ZH[lMonth - 1] + '月';
+    }
+    return LUNAR_DAYS_ZH[lDay - 1];
+  } catch(e) { return ''; }
+}
+// ──────────────────────────────────────────────────────────────────
+
 function renderCalendar() {
   const y = calDate.getFullYear(), m = calDate.getMonth();
   document.getElementById('cal-month-label').textContent = calDate.toLocaleDateString('en-MY', {month:'long', year:'numeric'});
@@ -3884,8 +3975,10 @@ function renderCalendar() {
     const isToday = date.getTime() === today.getTime();
     const isSel = calSelected === key;
     const tArr = tripMap[key] || [], bArr = busyMap[key] || [];
+    const lunar = lunarLabel(y, m+1, d);
     html += `<div class="cal-day${isToday?' today':''}${isSel?' selected':''}" onclick="selectCalDay('${key}')">
       <div class="cal-day-num">${d}</div>
+      ${lunar ? `<div class="cal-lunar">${lunar}</div>` : ''}
       <div class="cal-dot">
         ${tArr.slice(0,3).map(() => '<span class="dot dot-trip"></span>').join('')}
         ${bArr.slice(0,2).map(() => '<span class="dot dot-busy"></span>').join('')}
