@@ -551,17 +551,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <h1>Calendar</h1>
         <p>View your trip schedule</p>
       </div>
-      <div style="display:flex;gap:.75rem;font-size:.85rem;color:var(--muted);align-items:center;margin-bottom:.75rem">
-        <span style="display:flex;gap:.3rem;align-items:center"><span class="dot dot-trip" style="width:10px;height:10px"></span>Trip</span>
-        <span style="display:flex;gap:.3rem;align-items:center"><span class="dot dot-busy" style="width:10px;height:10px"></span>Busy</span>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+        <div style="display:flex;gap:.75rem;font-size:.85rem;color:var(--muted);align-items:center">
+          <span style="display:flex;gap:.3rem;align-items:center"><span class="dot dot-trip" style="width:10px;height:10px"></span>Trip</span>
+          <span style="display:flex;gap:.3rem;align-items:center"><span class="dot dot-busy" style="width:10px;height:10px"></span>Busy</span>
+        </div>
+        <button onclick="calGoToday()" style="font-size:.75rem;padding:.3rem .75rem;border:1.5px solid var(--teal);border-radius:14px;background:transparent;color:var(--teal);cursor:pointer;font-weight:600">Today</button>
       </div>
       <div class="card">
         <div class="cal-month-nav">
           <button class="btn-nav" onclick="calPrev()">&#8249;</button>
-          <div style="display:flex;flex-direction:column;align-items:center;gap:.25rem">
-            <h2 id="cal-month-label"></h2>
-            <button onclick="calGoToday()" style="font-size:.7rem;padding:.2rem .6rem;border:1px solid var(--teal);border-radius:12px;background:transparent;color:var(--teal);cursor:pointer;font-weight:600">Today</button>
-          </div>
+          <h2 id="cal-month-label"></h2>
           <button class="btn-nav" onclick="calNext()">&#8250;</button>
         </div>
         <div class="cal-header-row">
