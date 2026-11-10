@@ -4238,9 +4238,9 @@ function renderCalendar() {
     const ph = getMYHoliday(y, m+1, d);
     html += `<div class="cal-day${isToday?' today':''}${isSel?' selected':''}${ph?' ph-day':''}" onclick="selectCalDay('${key}')">
       <div class="cal-day-num">${d}</div>
-      ${ph ? `<div class="cal-lunar ph">${ph}</div>` : ''}
       ${li ? `<div class="cal-lunar${li.isFirst?' lunar-first':''}">${li.text}</div>` : ''}
       ${st ? `<div class="cal-lunar solar-term">${st}</div>` : ''}
+      ${ph ? `<div class="cal-lunar ph">${ph}</div>` : ''}
       <div class="cal-dot">
         ${tArr.slice(0,3).map(() => '<span class="dot dot-trip"></span>').join('')}
         ${bArr.slice(0,2).map(() => '<span class="dot dot-busy"></span>').join('')}
